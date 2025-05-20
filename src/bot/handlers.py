@@ -48,85 +48,205 @@ def start(update: Update, context: CallbackContext) -> None:
         reply_markup=reply_markup
     )
 
-def show_question(update: Update, context: CallbackContext, user_id: int):
-    """Показывает текущую карточку с теорией пользователю"""
-    try:
-        question = game_manager.get_current_question(user_id)
-        if not question:
-            if update.callback_query:
-                update.callback_query.message.reply_text(
-                    "Поздравляем! Вы изучили все доступные карточки! 🎉\n"
-                    "Новые карточки будут добавлены в ближайшее время."
-                )
-            else:
-                update.message.reply_text(
-                    "Поздравляем! Вы изучили все доступные карточки! 🎉\n"
-                    "Новые карточки будут добавлены в ближайшее время."
-                )
-            return
-
-        progress = game_manager.get_level_progress(user_id)
-        
-        message_text = (
-            f"📚 Теория (Карточка {progress['cards_viewed'] + 1} из {progress['total_cards']})\n\n"
-            f"{question.theory}\n\n"
-            "Нажмите 'Следующая карточка', чтобы продолжить обучение."
-        )
-        keyboard = [[InlineKeyboardButton("Следующая карточка", callback_data='next_card')]]
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        if update.callback_query:
-            update.callback_query.message.reply_text(
-                text=message_text,
-                reply_markup=reply_markup
-            )
-        else:
-            update.message.reply_text(message_text, reply_markup=reply_markup)
-    except Exception as e:
-        logger.error(f"Error in show_question: {e}")
-        if update.callback_query:
-            update.callback_query.message.reply_text(
-                "Произошла ошибка при отображении карточки. Пожалуйста, попробуйте еще раз или начните сначала с помощью команды /start"
-            )
-        else:
-            update.message.reply_text(
-                "Произошла ошибка при отображении карточки. Пожалуйста, попробуйте еще раз или начните сначала с помощью команды /start"
-            )
-
-def button_handler(update: Update, context: CallbackContext):
+def button_handler(update: Update, context: CallbackContext) -> None:
     """Обработчик нажатий на кнопки"""
-    try:
-        query = update.callback_query
-        if not query:
-            return
-            
-        user_id = query.from_user.id
-        
-        if query.data == 'java_core':
-            show_question(update, context, user_id)
-        elif query.data == 'spring':
-            show_question(update, context, user_id)
-        elif query.data == 'database':
-            show_question(update, context, user_id)
-        elif query.data == 'docker_k8s':
-            show_question(update, context, user_id)
-        elif query.data == 'stats':
-            progress = game_manager.get_level_progress(user_id)
-            query.message.reply_text(
-                f"📊 Ваш прогресс:\n\n"
-                f"Изучено карточек: {progress['cards_viewed']} из {progress['total_cards']}"
-            )
-        elif query.data == 'next_card':
-            state = game_manager.get_user_state(user_id)
-            state.next_card()
-            show_question(update, context, user_id)
-    except Exception as e:
-        logger.error(f"Error in button_handler: {e}")
-        if update.callback_query:
-            update.callback_query.message.reply_text(
-                "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте еще раз или начните сначала с помощью команды /start"
-            )
+    query = update.callback_query
+    query.answer()
+    
+    if query.data == 'java_core':
+        show_java_core_menu(update, context)
+    elif query.data == 'spring':
+        show_spring_menu(update, context)
+    elif query.data == 'database':
+        show_database_menu(update, context)
+    elif query.data == 'docker_k8s':
+        show_docker_k8s_menu(update, context)
+    elif query.data == 'stats':
+        show_stats(update, context)
+    elif query.data == 'back':
+        show_main_menu(update, context)
+    elif query.data.startswith('java_topic_'):
+        show_java_topic(update, context, query.data.split('_')[2])
+    elif query.data.startswith('spring_topic_'):
+        show_spring_topic(update, context, query.data.split('_')[2])
+    elif query.data.startswith('database_topic_'):
+        show_database_topic(update, context, query.data.split('_')[2])
+    elif query.data.startswith('docker_k8s_topic_'):
+        show_docker_k8s_topic(update, context, query.data.split('_')[3])
+
+def show_main_menu(update: Update, context: CallbackContext) -> None:
+    """Показать главное меню"""
+    keyboard = [
+        [InlineKeyboardButton("Java Core", callback_data='java_core')],
+        [InlineKeyboardButton("Spring Framework", callback_data='spring')],
+        [InlineKeyboardButton("Базы данных", callback_data='database')],
+        [InlineKeyboardButton("Docker & Kubernetes", callback_data='docker_k8s')],
+        [InlineKeyboardButton("Статистика", callback_data='stats')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.edit_message_text(
+        'Выберите раздел для изучения:',
+        reply_markup=reply_markup
+    )
+
+def show_java_core_menu(update: Update, context: CallbackContext) -> None:
+    """Показать меню тем Java Core"""
+    keyboard = []
+    for i, card in enumerate(JAVA_CORE_CARDS):
+        keyboard.append([InlineKeyboardButton(
+            card.text,
+            callback_data=f'java_topic_{i}'
+        )])
+    keyboard.append([InlineKeyboardButton("Назад", callback_data='back')])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.edit_message_text(
+        text="Выберите тему по Java Core:",
+        reply_markup=reply_markup
+    )
+
+def show_spring_menu(update: Update, context: CallbackContext) -> None:
+    """Показать меню тем Spring"""
+    keyboard = []
+    for i, card in enumerate(SPRING_CARDS):
+        keyboard.append([InlineKeyboardButton(
+            card.text,
+            callback_data=f'spring_topic_{i}'
+        )])
+    keyboard.append([InlineKeyboardButton("Назад", callback_data='back')])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.edit_message_text(
+        text="Выберите тему по Spring:",
+        reply_markup=reply_markup
+    )
+
+def show_database_menu(update: Update, context: CallbackContext) -> None:
+    """Показать меню тем по базам данных"""
+    keyboard = []
+    for i, card in enumerate(DATABASE_CARDS):
+        keyboard.append([InlineKeyboardButton(
+            card.text,
+            callback_data=f'database_topic_{i}'
+        )])
+    keyboard.append([InlineKeyboardButton("Назад", callback_data='back')])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.edit_message_text(
+        text="Выберите тему по базам данных:",
+        reply_markup=reply_markup
+    )
+
+def show_docker_k8s_menu(update: Update, context: CallbackContext) -> None:
+    """Показать меню тем по Docker и Kubernetes"""
+    keyboard = []
+    for i, card in enumerate(DOCKER_K8S_CARDS):
+        keyboard.append([InlineKeyboardButton(
+            card.text,
+            callback_data=f'docker_k8s_topic_{i}'
+        )])
+    keyboard.append([InlineKeyboardButton("Назад", callback_data='back')])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.edit_message_text(
+        text="Выберите тему по Docker и Kubernetes:",
+        reply_markup=reply_markup
+    )
+
+def show_java_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
+    """Показать тему по Java Core"""
+    card = JAVA_CORE_CARDS[int(topic_index)]
+    message = f"*{card.text}*\n\n"
+    message += f"{card.theory}\n\n"
+    message += f"*Практические примеры:*\n{card.explanation}"
+    
+    keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='java_core')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    update.callback_query.edit_message_text(
+        text=message,
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+def show_spring_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
+    """Показать тему по Spring"""
+    card = SPRING_CARDS[int(topic_index)]
+    message = f"*{card.text}*\n\n"
+    message += f"{card.theory}\n\n"
+    message += f"*Практические примеры:*\n{card.explanation}"
+    
+    keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='spring')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    update.callback_query.edit_message_text(
+        text=message,
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+def show_database_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
+    """Показать тему по базам данных"""
+    card = DATABASE_CARDS[int(topic_index)]
+    message = f"*{card.text}*\n\n"
+    message += f"{card.theory}\n\n"
+    message += f"*Практические примеры:*\n{card.explanation}"
+    
+    keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='database')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    update.callback_query.edit_message_text(
+        text=message,
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+def show_docker_k8s_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
+    """Показать тему по Docker и Kubernetes"""
+    card = DOCKER_K8S_CARDS[int(topic_index)]
+    message = f"*{card.text}*\n\n"
+    message += f"{card.theory}\n\n"
+    message += f"*Практические примеры:*\n{card.explanation}"
+    
+    keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='docker_k8s')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    update.callback_query.edit_message_text(
+        text=message,
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+def show_stats(update: Update, context: CallbackContext) -> None:
+    """Показать статистику изучения"""
+    user_id = update.callback_query.from_user.id
+    if user_id not in user_states:
+        user_states[user_id] = {
+            'java_core': set(),
+            'spring': set(),
+            'database': set(),
+            'docker_k8s': set()
+        }
+    
+    java_core_learned = len(user_states[user_id]['java_core'])
+    spring_learned = len(user_states[user_id]['spring'])
+    database_learned = len(user_states[user_id]['database'])
+    docker_k8s_learned = len(user_states[user_id]['docker_k8s'])
+    
+    message = f"*Ваша статистика:*\n\n"
+    message += f"Java Core: {java_core_learned}/{len(JAVA_CORE_CARDS)} тем\n"
+    message += f"Spring: {spring_learned}/{len(SPRING_CARDS)} тем\n"
+    message += f"Базы данных: {database_learned}/{len(DATABASE_CARDS)} тем\n"
+    message += f"Docker & Kubernetes: {docker_k8s_learned}/{len(DOCKER_K8S_CARDS)} тем"
+    
+    keyboard = [[InlineKeyboardButton("Назад", callback_data='back')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    update.callback_query.edit_message_text(
+        text=message,
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
 
 def main():
     """Запуск бота"""
