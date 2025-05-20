@@ -141,7 +141,7 @@ def show_algorithms_menu(update: Update, context: CallbackContext) -> None:
     for category, algos in categories.items():
         keyboard.append([InlineKeyboardButton(
             f"📚 {category.capitalize()} ({len(algos)})",
-            callback_data=f"algo_cat_{category}"
+            callback_data=f"cat_{category}"
         )])
     
     keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data="back")])
@@ -163,7 +163,7 @@ def show_algorithm_category(update: Update, context: CallbackContext, category: 
             difficulty_emoji = "🟢" if algo.difficulty == "easy" else "🟡" if algo.difficulty == "medium" else "🔴"
             keyboard.append([InlineKeyboardButton(
                 f"{difficulty_emoji} {algo.title}",
-                callback_data=f"algo_show_{i}"
+                callback_data=f"a_{i}"
             )])
     
     keyboard.append([InlineKeyboardButton("◀️ Назад к категориям", callback_data="algorithms")])
@@ -207,7 +207,7 @@ def show_algorithm(update: Update, context: CallbackContext, algo_index: int) ->
     
     # Создаем клавиатуру
     keyboard = [
-        [InlineKeyboardButton("◀️ Назад к списку", callback_data=f"algo_cat_{algo.category}")],
+        [InlineKeyboardButton("◀️ Назад к списку", callback_data=f"cat_{algo.category}")],
         [InlineKeyboardButton("◀️ В главное меню", callback_data="back")]
     ]
     
@@ -285,11 +285,11 @@ def button_handler(update: Update, context: CallbackContext) -> None:
         show_docker_k8s_menu(update, context)
     elif data == "algorithms":
         show_algorithms_menu(update, context)
-    elif data.startswith("algo_cat_"):
-        category = data.split("_")[-1]
+    elif data.startswith("cat_"):
+        category = data[4:]
         show_algorithm_category(update, context, category)
-    elif data.startswith("algo_show_"):
-        algo_index = int(data.split("_")[-1])
+    elif data.startswith("a_"):
+        algo_index = int(data[2:])
         show_algorithm(update, context, algo_index)
     elif data == "back":
         start(update, context)
