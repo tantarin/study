@@ -9,7 +9,7 @@ from src.cards import (
     SPRING_CARDS,
     DATABASE_CARDS,
     DOCKER_K8S_CARDS,
-    ALGORITHMS_CARDS
+    ALGORITHMS
 )
 
 # Настройка логирования
@@ -129,20 +129,112 @@ def show_algorithms_menu(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     query.answer()
     
+    # Группируем алгоритмы по категориям
+    categories = {}
+    for algo in ALGORITHMS:
+        if algo.category not in categories:
+            categories[algo.category] = []
+        categories[algo.category].append(algo)
+    
     keyboard = []
-    for i, card in enumerate(ALGORITHMS_CARDS):
+    # Добавляем кнопки по категориям
+    for category, algos in categories.items():
         keyboard.append([InlineKeyboardButton(
-            f"{i+1}. {card.text}",
-            callback_data=f"algo_{i}"
+            f"📚 {category.capitalize()} ({len(algos)})",
+            callback_data=f"algo_cat_{category}"
         )])
     
-    keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data="back_to_main")])
+    keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data="back")])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     query.edit_message_text(
-        text="Выберите тему по алгоритмам:",
+        text="Выберите категорию алгоритмов:",
         reply_markup=reply_markup
     )
+
+def show_algorithm_category(update: Update, context: CallbackContext, category: str) -> None:
+    """Показывает список алгоритмов в категории"""
+    query = update.callback_query
+    query.answer()
+    
+    keyboard = []
+    for i, algo in enumerate(ALGORITHMS):
+        if algo.category == category:
+            difficulty_emoji = "🟢" if algo.difficulty == "easy" else "🟡" if algo.difficulty == "medium" else "🔴"
+            keyboard.append([InlineKeyboardButton(
+                f"{difficulty_emoji} {algo.title}",
+                callback_data=f"algo_show_{i}"
+            )])
+    
+    keyboard.append([InlineKeyboardButton("◀️ Назад к категориям", callback_data="algorithms")])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    query.edit_message_text(
+        text=f"Алгоритмы в категории {category.capitalize()}:",
+        reply_markup=reply_markup
+    )
+
+def show_algorithm(update: Update, context: CallbackContext, algo_index: int) -> None:
+    """Показывает детальную информацию об алгоритме"""
+    query = update.callback_query
+    query.answer()
+    
+    algo = ALGORITHMS[algo_index]
+    
+    # Формируем текст сообщения
+    message = f"*{algo.title}*\n\n"
+    message += f"📝 *Описание:*\n{algo.description}\n\n"
+    message += f"⚡️ *Сложность:*\n{algo.complexity}\n\n"
+    message += f"📚 *Теория:*\n{algo.theory}\n\n"
+    message += f"🔗 *Визуализация:*\n{algo.visualization_url}\n\n"
+    message += f"💻 *Java код:*\n```java\n{algo.java_code}\n```\n\n"
+    
+    if algo.python_code:
+        message += f"🐍 *Python код:*\n```python\n{algo.python_code}\n```\n\n"
+    
+    if algo.examples:
+        message += "*Примеры:*\n"
+        for i, example in enumerate(algo.examples, 1):
+            message += f"\nПример {i}:\n"
+            message += f"Вход: `{example.input_data}`\n"
+            message += f"Выход: `{example.output_data}`\n"
+            message += f"Объяснение: {example.explanation}\n"
+    
+    if algo.leetcode_problems:
+        message += "\n*Задачи на LeetCode:*\n"
+        for problem in algo.leetcode_problems:
+            message += f"• {problem}\n"
+    
+    # Создаем клавиатуру
+    keyboard = [
+        [InlineKeyboardButton("◀️ Назад к списку", callback_data=f"algo_cat_{algo.category}")],
+        [InlineKeyboardButton("◀️ В главное меню", callback_data="back")]
+    ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    # Отправляем сообщение частями из-за ограничений Telegram
+    if len(message) > 4096:
+        parts = [message[i:i+4096] for i in range(0, len(message), 4096)]
+        for i, part in enumerate(parts):
+            if i == 0:
+                query.edit_message_text(
+                    text=part,
+                    reply_markup=reply_markup if i == len(parts)-1 else None,
+                    parse_mode=ParseMode.MARKDOWN
+                )
+            else:
+                query.message.reply_text(
+                    text=part,
+                    reply_markup=reply_markup if i == len(parts)-1 else None,
+                    parse_mode=ParseMode.MARKDOWN
+                )
+    else:
+        query.edit_message_text(
+            text=message,
+            reply_markup=reply_markup,
+            parse_mode=ParseMode.MARKDOWN
+        )
 
 def show_card(update: Update, context: CallbackContext, card: Question) -> None:
     """Показывает карточку с вопросом и ответом"""
@@ -193,10 +285,13 @@ def button_handler(update: Update, context: CallbackContext) -> None:
         show_docker_k8s_menu(update, context)
     elif data == "algorithms":
         show_algorithms_menu(update, context)
+    elif data.startswith("algo_cat_"):
+        category = data.split("_")[-1]
+        show_algorithm_category(update, context, category)
+    elif data.startswith("algo_show_"):
+        algo_index = int(data.split("_")[-1])
+        show_algorithm(update, context, algo_index)
     elif data == "back":
-        # Возвращаемся в главное меню
-        start(update, context)
-    elif data == "back_to_main":
         start(update, context)
     elif data == "back_to_section":
         # Определяем текущий раздел из контекста
@@ -237,13 +332,6 @@ def button_handler(update: Update, context: CallbackContext) -> None:
         # Обработка тем Docker & Kubernetes
         index = int(data.split("_")[-1])
         show_docker_k8s_topic(update, context, index)
-    elif data.startswith("algo_"):
-        # Обработка карточек Algorithms
-        index = int(data.split("_")[1])
-        card = ALGORITHMS_CARDS[index]
-        context.user_data['current_card'] = card
-        context.user_data['current_section'] = 'algorithms'
-        show_card(update, context, card)
 
 def show_java_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
     """Показать тему по Java Core"""
@@ -301,21 +389,6 @@ def show_docker_k8s_topic(update: Update, context: CallbackContext, topic_index:
     message += f"*Практические примеры:*\n{card.explanation}"
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='docker_k8s')]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    update.callback_query.edit_message_text(
-        text=message,
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
-    )
-
-def show_algorithms_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
-    """Показать тему по алгоритмам"""
-    card = ALGORITHMS_CARDS[int(topic_index)]
-    message = f"*Вопрос:*\n{card['question']}\n\n"
-    message += f"*Ответ:*\n{card['answer']}"
-    
-    keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='algorithms')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     update.callback_query.edit_message_text(
