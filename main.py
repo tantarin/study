@@ -18,7 +18,7 @@ def main() -> None:
     """Запуск бота"""
     # Загрузка переменных окружения
     load_dotenv()
-    token = os.getenv('TELEGRAM_TOKEN')
+    token = os.getenv('BOT_TOKEN')
     
     if not token:
         logger.error("Не найден токен Telegram бота в переменных окружения")

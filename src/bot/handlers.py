@@ -7,7 +7,8 @@ from src.cards import (
     JAVA_CORE_CARDS,
     SPRING_CARDS,
     DATABASE_CARDS,
-    DOCKER_K8S_CARDS
+    DOCKER_K8S_CARDS,
+    ALGORITHMS_CARDS
 )
 
 # Настройка логирования
@@ -39,7 +40,9 @@ def start(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("Spring Framework", callback_data='spring')],
         [InlineKeyboardButton("Базы данных", callback_data='database')],
         [InlineKeyboardButton("Docker & Kubernetes", callback_data='docker_k8s')],
-        [InlineKeyboardButton("Статистика", callback_data='stats')]
+        [InlineKeyboardButton("Алгоритмы", callback_data='algorithms')],
+        [InlineKeyboardButton("Статистика", callback_data='stats')],
+        [InlineKeyboardButton("🔄 Старт", callback_data='restart')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text(
@@ -53,7 +56,28 @@ def button_handler(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     query.answer()
     
-    if query.data == 'java_core':
+    if query.data == 'restart':
+        # Очищаем состояние пользователя
+        user_id = update.callback_query.from_user.id
+        if user_id in user_states:
+            del user_states[user_id]
+        # Показываем приветственное сообщение
+        keyboard = [
+            [InlineKeyboardButton("Java Core", callback_data='java_core')],
+            [InlineKeyboardButton("Spring Framework", callback_data='spring')],
+            [InlineKeyboardButton("Базы данных", callback_data='database')],
+            [InlineKeyboardButton("Docker & Kubernetes", callback_data='docker_k8s')],
+            [InlineKeyboardButton("Алгоритмы", callback_data='algorithms')],
+            [InlineKeyboardButton("Статистика", callback_data='stats')],
+            [InlineKeyboardButton("🔄 Старт", callback_data='restart')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        update.callback_query.edit_message_text(
+            'Привет! Я бот для подготовки к собеседованиям по Java и смежным технологиям.\n'
+            'Выберите раздел для изучения:',
+            reply_markup=reply_markup
+        )
+    elif query.data == 'java_core':
         show_java_core_menu(update, context)
     elif query.data == 'spring':
         show_spring_menu(update, context)
@@ -61,6 +85,8 @@ def button_handler(update: Update, context: CallbackContext) -> None:
         show_database_menu(update, context)
     elif query.data == 'docker_k8s':
         show_docker_k8s_menu(update, context)
+    elif query.data == 'algorithms':
+        show_algorithms_menu(update, context)
     elif query.data == 'stats':
         show_stats(update, context)
     elif query.data == 'back':
@@ -73,6 +99,8 @@ def button_handler(update: Update, context: CallbackContext) -> None:
         show_database_topic(update, context, query.data.split('_')[2])
     elif query.data.startswith('docker_k8s_topic_'):
         show_docker_k8s_topic(update, context, query.data.split('_')[3])
+    elif query.data.startswith('algorithms_topic_'):
+        show_algorithms_topic(update, context, query.data.split('_')[2])
 
 def show_main_menu(update: Update, context: CallbackContext) -> None:
     """Показать главное меню"""
@@ -81,7 +109,9 @@ def show_main_menu(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("Spring Framework", callback_data='spring')],
         [InlineKeyboardButton("Базы данных", callback_data='database')],
         [InlineKeyboardButton("Docker & Kubernetes", callback_data='docker_k8s')],
-        [InlineKeyboardButton("Статистика", callback_data='stats')]
+        [InlineKeyboardButton("Алгоритмы", callback_data='algorithms')],
+        [InlineKeyboardButton("Статистика", callback_data='stats')],
+        [InlineKeyboardButton("🔄 Старт", callback_data='restart')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.edit_message_text(
@@ -153,6 +183,22 @@ def show_docker_k8s_menu(update: Update, context: CallbackContext) -> None:
         reply_markup=reply_markup
     )
 
+def show_algorithms_menu(update: Update, context: CallbackContext) -> None:
+    """Показать меню тем по алгоритмам"""
+    keyboard = []
+    for i, card in enumerate(ALGORITHMS_CARDS):
+        keyboard.append([InlineKeyboardButton(
+            card["question"],
+            callback_data=f'algorithms_topic_{i}'
+        )])
+    keyboard.append([InlineKeyboardButton("Назад", callback_data='back')])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.edit_message_text(
+        text="Выберите тему по алгоритмам:",
+        reply_markup=reply_markup
+    )
+
 def show_java_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
     """Показать тему по Java Core"""
     card = JAVA_CORE_CARDS[int(topic_index)]
@@ -209,6 +255,21 @@ def show_docker_k8s_topic(update: Update, context: CallbackContext, topic_index:
     message += f"*Практические примеры:*\n{card.explanation}"
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='docker_k8s')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    update.callback_query.edit_message_text(
+        text=message,
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+def show_algorithms_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
+    """Показать тему по алгоритмам"""
+    card = ALGORITHMS_CARDS[int(topic_index)]
+    message = f"*Вопрос:*\n{card['question']}\n\n"
+    message += f"*Ответ:*\n{card['answer']}"
+    
+    keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='algorithms')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     update.callback_query.edit_message_text(
