@@ -1,6 +1,7 @@
 import os
 import logging
 import re
+import html
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
@@ -244,31 +245,31 @@ def show_algorithm(update: Update, context: CallbackContext, algo_index: int) ->
     query = update.callback_query
     algo = ALGORITHMS[algo_index]
     
-    # Формируем текст сообщения с экранированием специальных символов
-    message = f"*{escape_markdown(algo.title)}*\n\n"
-    message += f"📝 *Описание:*\n{escape_markdown(algo.description)}\n\n"
-    message += f"⚡️ *Сложность:*\n{escape_markdown(algo.complexity)}\n\n"
-    message += f"📚 *Теория:*\n{escape_markdown(algo.theory)}\n\n"
-    message += f"🔗 *Визуализация:*\n{escape_markdown(algo.visualization_url)}\n\n"
+    # Формируем текст сообщения с HTML форматированием
+    message = f"<b>{html.escape(algo.title)}</b>\n\n"
+    message += f"📝 <b>Описание:</b>\n{html.escape(algo.description)}\n\n"
+    message += f"⚡️ <b>Сложность:</b>\n{html.escape(algo.complexity)}\n\n"
+    message += f"📚 <b>Теория:</b>\n{html.escape(algo.theory)}\n\n"
+    message += f"🔗 <b>Визуализация:</b>\n{html.escape(algo.visualization_url)}\n\n"
     
-    # Код обрабатываем отдельно, так как он уже в блоке кода
-    message += f"💻 *Java код:*\n```java\n{algo.java_code}\n```\n\n"
+    # Код обрабатываем отдельно
+    message += f"💻 <b>Java код:</b>\n<pre>{html.escape(algo.java_code)}</pre>\n\n"
     
     if algo.python_code:
-        message += f"🐍 *Python код:*\n```python\n{algo.python_code}\n```\n\n"
+        message += f"🐍 <b>Python код:</b>\n<pre>{html.escape(algo.python_code)}</pre>\n\n"
     
     if algo.examples:
-        message += "*Примеры:*\n"
+        message += "<b>Примеры:</b>\n"
         for i, example in enumerate(algo.examples, 1):
             message += f"\nПример {i}:\n"
-            message += f"Вход: `{escape_markdown(example.input_data)}`\n"
-            message += f"Выход: `{escape_markdown(example.output_data)}`\n"
-            message += f"Объяснение: {escape_markdown(example.explanation)}\n"
+            message += f"Вход: <code>{html.escape(example.input_data)}</code>\n"
+            message += f"Выход: <code>{html.escape(example.output_data)}</code>\n"
+            message += f"Объяснение: {html.escape(example.explanation)}\n"
     
     if algo.leetcode_problems:
-        message += "\n*Задачи на LeetCode:*\n"
+        message += "\n<b>Задачи на LeetCode:</b>\n"
         for problem in algo.leetcode_problems:
-            message += f"• {escape_markdown(problem)}\n"
+            message += f"• {html.escape(problem)}\n"
     
     # Создаем клавиатуру
     keyboard = [
@@ -286,19 +287,19 @@ def show_algorithm(update: Update, context: CallbackContext, algo_index: int) ->
                 query.edit_message_text(
                     text=part,
                     reply_markup=reply_markup if i == len(parts)-1 else None,
-                    parse_mode=ParseMode.MARKDOWN_V2
+                    parse_mode=ParseMode.HTML
                 )
             else:
                 query.message.reply_text(
                     text=part,
                     reply_markup=reply_markup if i == len(parts)-1 else None,
-                    parse_mode=ParseMode.MARKDOWN_V2
+                    parse_mode=ParseMode.HTML
                 )
     else:
         query.edit_message_text(
             text=message,
             reply_markup=reply_markup,
-            parse_mode=ParseMode.MARKDOWN_V2
+            parse_mode=ParseMode.HTML
         )
 
 def show_card(update: Update, context: CallbackContext, card: Question) -> None:
@@ -416,9 +417,9 @@ def button_handler(update: Update, context: CallbackContext) -> None:
 def show_java_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
     """Показать тему по Java Core"""
     card = JAVA_CORE_CARDS[int(topic_index)]
-    message = f"*{card.text}*\n\n"
-    message += f"{card.theory}\n\n"
-    message += f"*Практические примеры:*\n{card.explanation}"
+    message = f"<b>{html.escape(card.text)}</b>\n\n"
+    message += f"{html.escape(card.theory)}\n\n"
+    message += f"<b>Практические примеры:</b>\n{html.escape(card.explanation)}"
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='java_core')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -426,15 +427,15 @@ def show_java_topic(update: Update, context: CallbackContext, topic_index: int) 
     update.callback_query.edit_message_text(
         text=message,
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode=ParseMode.HTML
     )
 
 def show_spring_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
     """Показать тему по Spring"""
     card = SPRING_CARDS[int(topic_index)]
-    message = f"*{card.text}*\n\n"
-    message += f"{card.theory}\n\n"
-    message += f"*Практические примеры:*\n{card.explanation}"
+    message = f"<b>{html.escape(card.text)}</b>\n\n"
+    message += f"{html.escape(card.theory)}\n\n"
+    message += f"<b>Практические примеры:</b>\n{html.escape(card.explanation)}"
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='spring')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -442,15 +443,37 @@ def show_spring_topic(update: Update, context: CallbackContext, topic_index: int
     update.callback_query.edit_message_text(
         text=message,
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode=ParseMode.HTML
     )
 
 def show_database_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
     """Показать тему по базам данных"""
     card = DATABASE_CARDS[int(topic_index)]
-    message = f"*{card.text}*\n\n"
-    message += f"{card.theory}\n\n"
-    message += f"*Практические примеры:*\n{card.explanation}"
+    message = f"<b>{html.escape(card.text)}</b>\n\n"
+    
+    # Обработка теории с учетом SQL-кода
+    theory_parts = card.theory.split('```sql')
+    processed_theory = html.escape(theory_parts[0])
+    for i in range(1, len(theory_parts)):
+        if '```' in theory_parts[i]:
+            code, rest = theory_parts[i].split('```', 1)
+            processed_theory += f'<pre><code class="language-sql">{html.escape(code.strip())}</code></pre>{html.escape(rest)}'
+        else:
+            processed_theory += html.escape(theory_parts[i])
+    
+    message += f"{processed_theory}\n\n"
+    
+    # Обработка примеров с учетом SQL-кода
+    explanation_parts = card.explanation.split('```sql')
+    processed_explanation = html.escape(explanation_parts[0])
+    for i in range(1, len(explanation_parts)):
+        if '```' in explanation_parts[i]:
+            code, rest = explanation_parts[i].split('```', 1)
+            processed_explanation += f'<pre><code class="language-sql">{html.escape(code.strip())}</code></pre>{html.escape(rest)}'
+        else:
+            processed_explanation += html.escape(explanation_parts[i])
+            
+    message += f"<b>Практические примеры:</b>\n{processed_explanation}"
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='database')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -458,15 +481,15 @@ def show_database_topic(update: Update, context: CallbackContext, topic_index: i
     update.callback_query.edit_message_text(
         text=message,
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode=ParseMode.HTML
     )
 
 def show_docker_k8s_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
     """Показать тему по Docker и Kubernetes"""
     card = DOCKER_K8S_CARDS[int(topic_index)]
-    message = f"*{card.text}*\n\n"
-    message += f"{card.theory}\n\n"
-    message += f"*Практические примеры:*\n{card.explanation}"
+    message = f"<b>{html.escape(card.text)}</b>\n\n"
+    message += f"{html.escape(card.theory)}\n\n"
+    message += f"<b>Практические примеры:</b>\n{html.escape(card.explanation)}"
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='docker_k8s')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -474,7 +497,7 @@ def show_docker_k8s_topic(update: Update, context: CallbackContext, topic_index:
     update.callback_query.edit_message_text(
         text=message,
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode=ParseMode.HTML
     )
 
 def show_stats(update: Update, context: CallbackContext) -> None:
