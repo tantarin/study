@@ -1,5 +1,6 @@
 import os
 import logging
+import re
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
@@ -153,6 +154,11 @@ def show_algorithms_menu(update: Update, context: CallbackContext) -> None:
         reply_markup=reply_markup
     )
 
+def escape_markdown(text: str) -> str:
+    """Экранирует специальные символы Markdown"""
+    escape_chars = r'_*[]()~`>#+-=|{}.!'
+    return ''.join(f'\\{c}' if c in escape_chars else c for c in text)
+
 def create_theory_markdown(algorithms, category: str) -> str:
     """Создает Markdown файл с теорией по категории алгоритмов"""
     # Создаем временный файл
@@ -236,16 +242,16 @@ def show_algorithm_category(update: Update, context: CallbackContext, category: 
 def show_algorithm(update: Update, context: CallbackContext, algo_index: int) -> None:
     """Показывает детальную информацию об алгоритме"""
     query = update.callback_query
-    query.answer()
-    
     algo = ALGORITHMS[algo_index]
     
-    # Формируем текст сообщения
-    message = f"*{algo.title}*\n\n"
-    message += f"📝 *Описание:*\n{algo.description}\n\n"
-    message += f"⚡️ *Сложность:*\n{algo.complexity}\n\n"
-    message += f"📚 *Теория:*\n{algo.theory}\n\n"
-    message += f"🔗 *Визуализация:*\n{algo.visualization_url}\n\n"
+    # Формируем текст сообщения с экранированием специальных символов
+    message = f"*{escape_markdown(algo.title)}*\n\n"
+    message += f"📝 *Описание:*\n{escape_markdown(algo.description)}\n\n"
+    message += f"⚡️ *Сложность:*\n{escape_markdown(algo.complexity)}\n\n"
+    message += f"📚 *Теория:*\n{escape_markdown(algo.theory)}\n\n"
+    message += f"🔗 *Визуализация:*\n{escape_markdown(algo.visualization_url)}\n\n"
+    
+    # Код обрабатываем отдельно, так как он уже в блоке кода
     message += f"💻 *Java код:*\n```java\n{algo.java_code}\n```\n\n"
     
     if algo.python_code:
@@ -255,14 +261,14 @@ def show_algorithm(update: Update, context: CallbackContext, algo_index: int) ->
         message += "*Примеры:*\n"
         for i, example in enumerate(algo.examples, 1):
             message += f"\nПример {i}:\n"
-            message += f"Вход: `{example.input_data}`\n"
-            message += f"Выход: `{example.output_data}`\n"
-            message += f"Объяснение: {example.explanation}\n"
+            message += f"Вход: `{escape_markdown(example.input_data)}`\n"
+            message += f"Выход: `{escape_markdown(example.output_data)}`\n"
+            message += f"Объяснение: {escape_markdown(example.explanation)}\n"
     
     if algo.leetcode_problems:
         message += "\n*Задачи на LeetCode:*\n"
         for problem in algo.leetcode_problems:
-            message += f"• {problem}\n"
+            message += f"• {escape_markdown(problem)}\n"
     
     # Создаем клавиатуру
     keyboard = [
@@ -280,19 +286,19 @@ def show_algorithm(update: Update, context: CallbackContext, algo_index: int) ->
                 query.edit_message_text(
                     text=part,
                     reply_markup=reply_markup if i == len(parts)-1 else None,
-                    parse_mode=ParseMode.MARKDOWN
+                    parse_mode=ParseMode.MARKDOWN_V2
                 )
             else:
                 query.message.reply_text(
                     text=part,
                     reply_markup=reply_markup if i == len(parts)-1 else None,
-                    parse_mode=ParseMode.MARKDOWN
+                    parse_mode=ParseMode.MARKDOWN_V2
                 )
     else:
         query.edit_message_text(
             text=message,
             reply_markup=reply_markup,
-            parse_mode=ParseMode.MARKDOWN
+            parse_mode=ParseMode.MARKDOWN_V2
         )
 
 def show_card(update: Update, context: CallbackContext, card: Question) -> None:
