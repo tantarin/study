@@ -37,6 +37,83 @@ def error_handler(update: Update, context: CallbackContext):
             "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте еще раз или начните сначала с помощью команды /start"
         )
 
+def create_full_theory_markdown() -> str:
+    """Создает Markdown файл со всей теорией из всех разделов"""
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.md', encoding='utf-8') as tmp_file:
+        # Заголовок документа
+        tmp_file.write('# Полная теория по всем разделам\n\n')
+        
+        # Java Core
+        tmp_file.write('# Java Core\n\n')
+        for card in JAVA_CORE_CARDS:
+            tmp_file.write(f'## {card.text}\n\n')
+            tmp_file.write('### Теория\n')
+            tmp_file.write(f'{card.theory}\n\n')
+            tmp_file.write('### Практические примеры\n')
+            tmp_file.write(f'{card.explanation}\n\n')
+            tmp_file.write('---\n\n')
+        
+        # Spring Framework
+        tmp_file.write('# Spring Framework\n\n')
+        for card in SPRING_CARDS:
+            tmp_file.write(f'## {card.text}\n\n')
+            tmp_file.write('### Теория\n')
+            tmp_file.write(f'{card.theory}\n\n')
+            tmp_file.write('### Практические примеры\n')
+            tmp_file.write(f'{card.explanation}\n\n')
+            tmp_file.write('---\n\n')
+        
+        # Базы данных
+        tmp_file.write('# Базы данных\n\n')
+        for card in DATABASE_CARDS:
+            tmp_file.write(f'## {card.text}\n\n')
+            tmp_file.write('### Теория\n')
+            tmp_file.write(f'{card.theory}\n\n')
+            tmp_file.write('### Практические примеры\n')
+            tmp_file.write(f'{card.explanation}\n\n')
+            tmp_file.write('---\n\n')
+        
+        # Docker и Kubernetes
+        tmp_file.write('# Docker и Kubernetes\n\n')
+        for card in DOCKER_K8S_CARDS:
+            tmp_file.write(f'## {card.text}\n\n')
+            tmp_file.write('### Теория\n')
+            tmp_file.write(f'{card.theory}\n\n')
+            tmp_file.write('### Практические примеры\n')
+            tmp_file.write(f'{card.explanation}\n\n')
+            tmp_file.write('---\n\n')
+        
+        # Алгоритмы
+        tmp_file.write('# Алгоритмы\n\n')
+        for algo in ALGORITHMS:
+            tmp_file.write(f'## {algo.title}\n\n')
+            tmp_file.write('### Описание\n')
+            tmp_file.write(f'{algo.description}\n\n')
+            tmp_file.write('### Сложность\n')
+            tmp_file.write(f'{algo.complexity}\n\n')
+            tmp_file.write('### Теория\n')
+            tmp_file.write(f'{algo.theory}\n\n')
+            if algo.examples:
+                tmp_file.write('### Примеры\n')
+                for i, example in enumerate(algo.examples, 1):
+                    tmp_file.write(f'#### Пример {i}\n')
+                    tmp_file.write(f'- Вход: `{example.input_data}`\n')
+                    tmp_file.write(f'- Выход: `{example.output_data}`\n')
+                    tmp_file.write(f'- Объяснение: {example.explanation}\n\n')
+            tmp_file.write('### Реализация на Java\n```java\n')
+            tmp_file.write(f'{algo.java_code}\n```\n\n')
+            if algo.python_code:
+                tmp_file.write('### Реализация на Python\n```python\n')
+                tmp_file.write(f'{algo.python_code}\n```\n\n')
+            if algo.leetcode_problems:
+                tmp_file.write('### Задачи на LeetCode\n')
+                for problem in algo.leetcode_problems:
+                    tmp_file.write(f'- {problem}\n')
+                tmp_file.write('\n')
+            tmp_file.write('---\n\n')
+        
+        return tmp_file.name
+
 def start(update: Update, context: CallbackContext) -> None:
     """Обработчик команды /start"""
     keyboard = [
@@ -45,6 +122,7 @@ def start(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("Базы данных", callback_data='database')],
         [InlineKeyboardButton("Docker & Kubernetes", callback_data='docker_k8s')],
         [InlineKeyboardButton("Алгоритмы", callback_data='algorithms')],
+        [InlineKeyboardButton("📝 Скачать всю теорию", callback_data='md_full')],
         [InlineKeyboardButton("Статистика", callback_data='stats')],
         [InlineKeyboardButton("🔄 Старт", callback_data='restart')]
     ]
@@ -136,6 +214,28 @@ def show_database_menu(update: Update, context: CallbackContext) -> None:
         reply_markup=reply_markup
     )
 
+def create_docker_k8s_markdown(cards) -> str:
+    """Создает Markdown файл с теорией по Docker и Kubernetes"""
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.md', encoding='utf-8') as tmp_file:
+        tmp_file.write('# Теория по Docker и Kubernetes\n\n')
+        
+        for card in cards:
+            # Заголовок темы
+            tmp_file.write(f'## {card.text}\n\n')
+            
+            # Теория
+            tmp_file.write('### Теория\n')
+            tmp_file.write(f'{card.theory}\n\n')
+            
+            # Примеры
+            tmp_file.write('### Практические примеры\n')
+            tmp_file.write(f'{card.explanation}\n\n')
+            
+            # Разделитель между темами
+            tmp_file.write('---\n\n')
+        
+        return tmp_file.name
+
 def show_docker_k8s_menu(update: Update, context: CallbackContext) -> None:
     """Показать меню тем по Docker и Kubernetes"""
     keyboard = []
@@ -144,6 +244,9 @@ def show_docker_k8s_menu(update: Update, context: CallbackContext) -> None:
             card.text,
             callback_data=f'docker_k8s_topic_{i}'
         )])
+    
+    # Добавляем кнопку для скачивания теории
+    keyboard.append([InlineKeyboardButton("📝 Скачать теорию в Markdown", callback_data="md_docker_k8s")])
     keyboard.append([InlineKeyboardButton("Назад", callback_data='back')])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -384,7 +487,21 @@ def button_handler(update: Update, context: CallbackContext) -> None:
         show_algorithm(update, context, algo_index)
     elif data.startswith("md_"):
         category = data[3:]
-        if category == "database":
+        if category == "full":
+            # Создаем полный Markdown со всей теорией
+            md_path = create_full_theory_markdown()
+            # Отправляем файл
+            with open(md_path, 'rb') as md_file:
+                query.message.reply_document(
+                    document=md_file,
+                    filename='full_theory.md',
+                    caption='Полная теория по всем разделам'
+                )
+            # Удаляем временный файл
+            os.unlink(md_path)
+            # Отвечаем на callback
+            query.answer("Полный Markdown файл создан и отправлен!")
+        elif category == "database":
             # Создаем Markdown для баз данных
             md_path = create_database_markdown(DATABASE_CARDS)
             # Отправляем файл
@@ -393,6 +510,20 @@ def button_handler(update: Update, context: CallbackContext) -> None:
                     document=md_file,
                     filename='theory_database.md',
                     caption='Теория по разделу: Базы данных'
+                )
+            # Удаляем временный файл
+            os.unlink(md_path)
+            # Отвечаем на callback
+            query.answer("Markdown файл создан и отправлен!")
+        elif category == "docker_k8s":
+            # Создаем Markdown для Docker и Kubernetes
+            md_path = create_docker_k8s_markdown(DOCKER_K8S_CARDS)
+            # Отправляем файл
+            with open(md_path, 'rb') as md_file:
+                query.message.reply_document(
+                    document=md_file,
+                    filename='theory_docker_k8s.md',
+                    caption='Теория по разделу: Docker и Kubernetes'
                 )
             # Удаляем временный файл
             os.unlink(md_path)
