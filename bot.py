@@ -4,8 +4,7 @@ from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 from game_logic import GameManager
-from kafka_questions import KAFKA_QUESTIONS
-from datetime import datetime, timezone
+from kafka_cards import KAFKA_CARDS
 
 # Настройка логирования
 logging.basicConfig(
@@ -20,7 +19,6 @@ TOKEN = os.getenv('TELEGRAM_TOKEN')
 
 # Инициализация игрового менеджера
 game_manager = GameManager()
-game_manager.questions = KAFKA_QUESTIONS
 
 def error_handler(update: Update, context: CallbackContext):
     """Обработчик ошибок"""
@@ -62,23 +60,14 @@ def show_question(update: Update, context: CallbackContext, user_id: int):
                 )
             return
 
-        state = game_manager.get_user_state(user_id)
         progress = game_manager.get_level_progress(user_id)
         
-        if state.current_step == 'theory':
-            message_text = (
-                f"📚 Теория (Уровень {progress['current_level']})\n\n"
-                f"{question.theory}\n\n"
-                "Нажмите 'Продолжить', чтобы увидеть краткое резюме."
-            )
-            keyboard = [[InlineKeyboardButton("Продолжить", callback_data='next_step')]]
-        else:  # summary
-            message_text = (
-                f"📝 Краткое резюме:\n\n"
-                f"{question.theory_summary}\n\n"
-                "Нажмите 'Следующая карточка', чтобы продолжить обучение."
-            )
-            keyboard = [[InlineKeyboardButton("Следующая карточка", callback_data='next_card')]]
+        message_text = (
+            f"📚 Теория (Карточка {progress['cards_viewed'] + 1} из {progress['total_cards']})\n\n"
+            f"{question.theory}\n\n"
+            "Нажмите 'Следующая карточка', чтобы продолжить обучение."
+        )
+        keyboard = [[InlineKeyboardButton("Следующая карточка", callback_data='next_card')]]
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -112,39 +101,31 @@ def button_handler(update: Update, context: CallbackContext):
         if query.data == 'start_learning':
             query.message.reply_text(
                 "🎮 Отлично! Давайте начнем изучение Kafka.\n\n"
-                "Вы будете изучать теорию по карточкам, каждая из которых содержит подробное объяснение и краткое резюме.\n\n"
+                "Вы будете изучать теорию по карточкам, каждая из которых содержит подробное объяснение темы.\n\n"
                 "Готовы начать?",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("Да, начинаем!", callback_data='level_1')]
+                    [InlineKeyboardButton("Да, начинаем!", callback_data='start_cards')]
                 ])
             )
         elif query.data == 'rules':
             query.message.reply_text(
                 "📖 Как это работает:\n\n"
                 "1. Каждая карточка содержит подробное объяснение темы\n"
-                "2. После изучения теории вы увидите краткое резюме\n"
-                "3. Карточки разделены по уровням сложности\n"
-                "4. Вы можете изучать карточки в своем темпе\n\n"
+                "2. Карточки показываются в случайном порядке\n"
+                "3. Вы можете изучать карточки в своем темпе\n\n"
                 "Удачи в обучении! 🚀"
             )
         elif query.data == 'stats':
-            state = game_manager.get_user_state(user_id)
             progress = game_manager.get_level_progress(user_id)
             query.message.reply_text(
                 f"📊 Ваш прогресс:\n\n"
-                f"Текущий уровень: {progress['current_level']}\n"
-                f"Изучено карточек: {progress['questions_answered']}"
+                f"Изучено карточек: {progress['cards_viewed']} из {progress['total_cards']}"
             )
-        elif query.data == 'level_1':
-            show_question(update, context, user_id)
-        elif query.data == 'next_step':
-            state = game_manager.get_user_state(user_id)
-            state.next_step()
+        elif query.data == 'start_cards':
             show_question(update, context, user_id)
         elif query.data == 'next_card':
             state = game_manager.get_user_state(user_id)
-            state.current_step = 'theory'
-            state.current_question = None  # Сбрасываем текущую карточку
+            state.next_card()
             show_question(update, context, user_id)
     except Exception as e:
         logger.error(f"Error in button_handler: {e}")
