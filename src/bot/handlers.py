@@ -193,6 +193,9 @@ def button_handler(update: Update, context: CallbackContext) -> None:
         show_docker_k8s_menu(update, context)
     elif data == "algorithms":
         show_algorithms_menu(update, context)
+    elif data == "back":
+        # Возвращаемся в главное меню
+        start(update, context)
     elif data == "back_to_main":
         start(update, context)
     elif data == "back_to_section":
@@ -218,34 +221,22 @@ def button_handler(update: Update, context: CallbackContext) -> None:
         current_card = context.user_data.get('current_card')
         if current_card:
             show_theory(update, context, current_card)
-    elif data.startswith("java_"):
-        # Обработка карточек Java Core
-        index = int(data.split("_")[1])
-        card = JAVA_CORE_CARDS[index]
-        context.user_data['current_card'] = card
-        context.user_data['current_section'] = 'java_core'
-        show_card(update, context, card)
-    elif data.startswith("spring_"):
-        # Обработка карточек Spring
-        index = int(data.split("_")[1])
-        card = SPRING_CARDS[index]
-        context.user_data['current_card'] = card
-        context.user_data['current_section'] = 'spring'
-        show_card(update, context, card)
-    elif data.startswith("db_"):
-        # Обработка карточек Database
-        index = int(data.split("_")[1])
-        card = DATABASE_CARDS[index]
-        context.user_data['current_card'] = card
-        context.user_data['current_section'] = 'database'
-        show_card(update, context, card)
-    elif data.startswith("dk_"):
-        # Обработка карточек Docker & Kubernetes
-        index = int(data.split("_")[1])
-        card = DOCKER_K8S_CARDS[index]
-        context.user_data['current_card'] = card
-        context.user_data['current_section'] = 'docker_k8s'
-        show_card(update, context, card)
+    elif data.startswith("java_topic_"):
+        # Обработка тем Java Core
+        index = int(data.split("_")[-1])
+        show_java_topic(update, context, index)
+    elif data.startswith("spring_topic_"):
+        # Обработка тем Spring
+        index = int(data.split("_")[-1])
+        show_spring_topic(update, context, index)
+    elif data.startswith("database_topic_"):
+        # Обработка тем Database
+        index = int(data.split("_")[-1])
+        show_database_topic(update, context, index)
+    elif data.startswith("docker_k8s_topic_"):
+        # Обработка тем Docker & Kubernetes
+        index = int(data.split("_")[-1])
+        show_docker_k8s_topic(update, context, index)
     elif data.startswith("algo_"):
         # Обработка карточек Algorithms
         index = int(data.split("_")[1])
