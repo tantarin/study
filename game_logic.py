@@ -1,16 +1,7 @@
-from dataclasses import dataclass
 from typing import List, Dict, Optional
 import random
-
-@dataclass
-class Question:
-    text: str
-    options: List[str]
-    correct_answer: str
-    explanation: str
-    points: int
-    theory: str  # Полное теоретическое объяснение
-    theory_summary: str  # Краткое резюме теории
+from models import Question
+from kafka_questions import KAFKA_QUESTIONS
 
 class GameState:
     def __init__(self):
@@ -20,6 +11,7 @@ class GameState:
         self.questions_per_level = 5
         self.points_to_next_level = 100
         self.current_step = 'theory'  # 'theory', 'summary', 'question'
+        self.current_question: Optional[Question] = None  # Текущий вопрос
 
     def is_level_complete(self) -> bool:
         return self.questions_answered >= self.questions_per_level
@@ -36,6 +28,7 @@ class GameState:
             self.current_level += 1
             self.questions_answered = 0
             self.current_step = 'theory'
+            self.current_question = None
             return True
         return False
 
@@ -47,6 +40,7 @@ class GameState:
         else:
             self.current_step = 'theory'
             self.questions_answered += 1
+            self.current_question = None
 
 class GameManager:
     def __init__(self):
@@ -55,24 +49,8 @@ class GameManager:
         self._initialize_questions()
 
     def _initialize_questions(self):
-        # TODO: Загружать вопросы из базы данных или файла
-        self.questions[1] = [
-            Question(
-                text="Что такое Apache Kafka?",
-                options=[
-                    "Система управления базами данных",
-                    "Распределенная система обмена сообщениями",
-                    "Веб-сервер",
-                    "Система кэширования"
-                ],
-                correct_answer="Распределенная система обмена сообщениями",
-                explanation="Apache Kafka - это распределенная система обмена сообщениями, которая позволяет обрабатывать большие объемы данных в реальном времени.",
-                points=20,
-                theory="Apache Kafka - это распределенная система обмена сообщениями, разработанная LinkedIn и переданная в Apache Software Foundation. Она предназначена для обработки больших объемов данных в реальном времени. Kafka использует модель публикации-подписки, где производители публикуют сообщения в топики, а потребители подписываются на эти топики для получения сообщений. Система обеспечивает высокую пропускную способность, отказоустойчивость и масштабируемость.",
-                theory_summary="Kafka - это система обмена сообщениями, где производители публикуют данные в топики, а потребители читают из них. Она обеспечивает высокую производительность и надежность."
-            ),
-            # Добавьте больше вопросов здесь
-        ]
+        # Загружаем вопросы из KAFKA_QUESTIONS
+        self.questions = KAFKA_QUESTIONS
 
     def get_user_state(self, user_id: int) -> GameState:
         if user_id not in self.user_states:
@@ -81,6 +59,11 @@ class GameManager:
 
     def get_current_question(self, user_id: int) -> Optional[Question]:
         state = self.get_user_state(user_id)
+        
+        # Если у нас уже есть текущий вопрос, возвращаем его
+        if state.current_question is not None:
+            return state.current_question
+            
         if state.current_level not in self.questions:
             return None
         
@@ -88,7 +71,9 @@ class GameManager:
         if not available_questions:
             return None
             
-        return random.choice(available_questions)
+        # Выбираем новый вопрос и сохраняем его
+        state.current_question = random.choice(available_questions)
+        return state.current_question
 
     def check_answer(self, user_id: int, question: Question, answer: str) -> bool:
         is_correct = answer == question.correct_answer

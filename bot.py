@@ -5,6 +5,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 from game_logic import GameManager
 from kafka_questions import KAFKA_QUESTIONS
+from datetime import datetime, timezone
 
 # Настройка логирования
 logging.basicConfig(
@@ -20,6 +21,14 @@ TOKEN = os.getenv('TELEGRAM_TOKEN')
 # Инициализация игрового менеджера
 game_manager = GameManager()
 game_manager.questions = KAFKA_QUESTIONS
+
+def error_handler(update: Update, context: CallbackContext):
+    """Обработчик ошибок"""
+    logger.error(f"Update {update} caused error {context.error}")
+    if update and update.effective_message:
+        update.effective_message.reply_text(
+            "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте еще раз или начните сначала с помощью команды /start"
+        )
 
 def start(update: Update, context: CallbackContext):
     """Обработчик команды /start"""
@@ -37,144 +46,112 @@ def start(update: Update, context: CallbackContext):
     )
 
 def show_question(update: Update, context: CallbackContext, user_id: int):
-    """Показывает текущий вопрос пользователю"""
-    question = game_manager.get_current_question(user_id)
-    if not question:
+    """Показывает текущую карточку с теорией пользователю"""
+    try:
+        question = game_manager.get_current_question(user_id)
+        if not question:
+            if update.callback_query:
+                update.callback_query.message.reply_text(
+                    "Поздравляем! Вы изучили все доступные карточки! 🎉\n"
+                    "Новые карточки будут добавлены в ближайшее время."
+                )
+            else:
+                update.message.reply_text(
+                    "Поздравляем! Вы изучили все доступные карточки! 🎉\n"
+                    "Новые карточки будут добавлены в ближайшее время."
+                )
+            return
+
+        state = game_manager.get_user_state(user_id)
+        progress = game_manager.get_level_progress(user_id)
+        
+        if state.current_step == 'theory':
+            message_text = (
+                f"📚 Теория (Уровень {progress['current_level']})\n\n"
+                f"{question.theory}\n\n"
+                "Нажмите 'Продолжить', чтобы увидеть краткое резюме."
+            )
+            keyboard = [[InlineKeyboardButton("Продолжить", callback_data='next_step')]]
+        else:  # summary
+            message_text = (
+                f"📝 Краткое резюме:\n\n"
+                f"{question.theory_summary}\n\n"
+                "Нажмите 'Следующая карточка', чтобы продолжить обучение."
+            )
+            keyboard = [[InlineKeyboardButton("Следующая карточка", callback_data='next_card')]]
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
         if update.callback_query:
             update.callback_query.message.reply_text(
-                "Поздравляем! Вы прошли все доступные уровни! 🎉\n"
-                "Новые уровни будут добавлены в ближайшее время."
+                text=message_text,
+                reply_markup=reply_markup
+            )
+        else:
+            update.message.reply_text(message_text, reply_markup=reply_markup)
+    except Exception as e:
+        logger.error(f"Error in show_question: {e}")
+        if update.callback_query:
+            update.callback_query.message.reply_text(
+                "Произошла ошибка при отображении карточки. Пожалуйста, попробуйте еще раз или начните сначала с помощью команды /start"
             )
         else:
             update.message.reply_text(
-                "Поздравляем! Вы прошли все доступные уровни! 🎉\n"
-                "Новые уровни будут добавлены в ближайшее время."
+                "Произошла ошибка при отображении карточки. Пожалуйста, попробуйте еще раз или начните сначала с помощью команды /start"
             )
-        return
-
-    state = game_manager.get_user_state(user_id)
-    progress = game_manager.get_level_progress(user_id)
-    
-    if state.current_step == 'theory':
-        message_text = (
-            f"📚 Теория (Уровень {progress['current_level']})\n\n"
-            f"{question.theory}\n\n"
-            "Нажмите 'Продолжить', чтобы увидеть краткое резюме."
-        )
-        keyboard = [[InlineKeyboardButton("Продолжить", callback_data='next_step')]]
-    elif state.current_step == 'summary':
-        message_text = (
-            f"📝 Краткое резюме:\n\n"
-            f"{question.theory_summary}\n\n"
-            "Нажмите 'Продолжить', чтобы перейти к вопросу."
-        )
-        keyboard = [[InlineKeyboardButton("Продолжить", callback_data='next_step')]]
-    else:  # question
-        keyboard = []
-        for option in question.options:
-            keyboard.append([InlineKeyboardButton(option, callback_data=f"answer_{option}")])
-        
-        message_text = (
-            f"❓ Вопрос {progress['questions_answered'] + 1} из {progress['questions_per_level']}\n"
-            f"Очки: {progress['score']}\n\n"
-            f"{question.text}"
-        )
-    
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    if update.callback_query:
-        update.callback_query.message.reply_text(message_text, reply_markup=reply_markup)
-    else:
-        update.message.reply_text(message_text, reply_markup=reply_markup)
 
 def button_handler(update: Update, context: CallbackContext):
     """Обработчик нажатий на кнопки"""
-    query = update.callback_query
-    if not query:
-        return
-        
     try:
-        query.answer()
-    except Exception as e:
-        logger.error(f"Error answering callback query: {e}")
+        query = update.callback_query
+        if not query:
+            return
+            
+        user_id = query.from_user.id
         
-    user_id = query.from_user.id
-    
-    if query.data == 'start_learning':
-        query.message.reply_text(
-            "🎮 Отлично! Давайте начнем обучение.\n\n"
-            "В игре вы будете проходить уровни, отвечая на вопросы о Kafka.\n"
-            "За правильные ответы вы получаете очки и открываете новые уровни.\n\n"
-            "Готовы начать?",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Да, начинаем!", callback_data='level_1')]
-            ])
-        )
-    elif query.data == 'rules':
-        query.message.reply_text(
-            "📖 Правила игры:\n\n"
-            "1. Игра состоит из нескольких уровней\n"
-            "2. На каждом уровне вам будут задаваться вопросы о Kafka\n"
-            "3. За правильный ответ вы получаете очки\n"
-            "4. Для перехода на следующий уровень нужно набрать определенное количество очков\n"
-            "5. В конце каждого уровня вы получаете краткое объяснение правильного ответа\n\n"
-            "Удачи в обучении! 🚀"
-        )
-    elif query.data == 'stats':
-        state = game_manager.get_user_state(user_id)
-        progress = game_manager.get_level_progress(user_id)
-        query.message.reply_text(
-            f"📊 Ваша статистика:\n\n"
-            f"Текущий уровень: {progress['current_level']}\n"
-            f"Всего очков: {progress['score']}\n"
-            f"Отвечено вопросов: {progress['questions_answered']}\n"
-            f"Очков до следующего уровня: {progress['points_to_next_level'] - progress['score']}"
-        )
-    elif query.data == 'level_1':
-        show_question(update, context, user_id)
-    elif query.data == 'next_step':
-        state = game_manager.get_user_state(user_id)
-        state.next_step()
-        show_question(update, context, user_id)
-    elif query.data.startswith('answer_'):
-        answer = query.data[7:]  # Убираем префикс 'answer_'
-        question = game_manager.get_current_question(user_id)
-        
-        if game_manager.check_answer(user_id, question, answer):
+        if query.data == 'start_learning':
             query.message.reply_text(
-                f"✅ Правильно! +{question.points} очков\n\n"
-                f"📝 Объяснение: {question.explanation}"
+                "🎮 Отлично! Давайте начнем изучение Kafka.\n\n"
+                "Вы будете изучать теорию по карточкам, каждая из которых содержит подробное объяснение и краткое резюме.\n\n"
+                "Готовы начать?",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("Да, начинаем!", callback_data='level_1')]
+                ])
             )
-        else:
+        elif query.data == 'rules':
             query.message.reply_text(
-                f"❌ Неправильно! Правильный ответ: {question.correct_answer}\n\n"
-                f"📝 Объяснение: {question.explanation}"
+                "📖 Как это работает:\n\n"
+                "1. Каждая карточка содержит подробное объяснение темы\n"
+                "2. После изучения теории вы увидите краткое резюме\n"
+                "3. Карточки разделены по уровням сложности\n"
+                "4. Вы можете изучать карточки в своем темпе\n\n"
+                "Удачи в обучении! 🚀"
             )
-        
-        state = game_manager.get_user_state(user_id)
-        if state.is_level_complete():
-            if state.can_advance_level():
-                state.advance_level()
-                query.message.reply_text(
-                    f"🎉 Поздравляем! Вы перешли на уровень {state.current_level}!\n\n"
-                    "Готовы к новым вопросам?",
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("Продолжить", callback_data='level_1')]
-                    ])
-                )
-            else:
-                query.message.reply_text(
-                    f"🏁 Уровень завершен!\n"
-                    f"Для перехода на следующий уровень нужно набрать {state.points_to_next_level} очков.\n"
-                    f"Текущий счет: {state.score}\n\n"
-                    "Продолжайте отвечать на вопросы!",
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("Следующий вопрос", callback_data='level_1')]
-                    ])
-                )
-        else:
+        elif query.data == 'stats':
+            state = game_manager.get_user_state(user_id)
+            progress = game_manager.get_level_progress(user_id)
+            query.message.reply_text(
+                f"📊 Ваш прогресс:\n\n"
+                f"Текущий уровень: {progress['current_level']}\n"
+                f"Изучено карточек: {progress['questions_answered']}"
+            )
+        elif query.data == 'level_1':
+            show_question(update, context, user_id)
+        elif query.data == 'next_step':
+            state = game_manager.get_user_state(user_id)
             state.next_step()
             show_question(update, context, user_id)
+        elif query.data == 'next_card':
+            state = game_manager.get_user_state(user_id)
+            state.current_step = 'theory'
+            state.current_question = None  # Сбрасываем текущую карточку
+            show_question(update, context, user_id)
+    except Exception as e:
+        logger.error(f"Error in button_handler: {e}")
+        if update.callback_query:
+            update.callback_query.message.reply_text(
+                "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте еще раз или начните сначала с помощью команды /start"
+            )
 
 def main():
     """Запуск бота"""
@@ -184,6 +161,7 @@ def main():
     # Добавляем обработчики
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CallbackQueryHandler(button_handler))
+    dispatcher.add_error_handler(error_handler)
 
     # Запускаем бота
     updater.start_polling()
