@@ -1,4 +1,4 @@
-from models import Question
+from src.models import Question
 
 JAVA_CORE_CARDS = [
     Question(

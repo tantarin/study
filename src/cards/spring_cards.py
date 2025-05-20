@@ -1,4 +1,4 @@
-from models import Question
+from src.models import Question
 
 SPRING_CARDS = [
     Question(

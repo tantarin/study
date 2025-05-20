@@ -3,8 +3,12 @@ import logging
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
-from game_logic import GameManager
-from kafka_cards import KAFKA_CARDS
+from src.cards import (
+    JAVA_CORE_CARDS,
+    SPRING_CARDS,
+    DATABASE_CARDS,
+    DOCKER_K8S_CARDS
+)
 
 # Настройка логирования
 logging.basicConfig(
@@ -17,8 +21,8 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 
-# Инициализация игрового менеджера
-game_manager = GameManager()
+# Словарь для хранения состояния пользователей
+user_states = {}
 
 def error_handler(update: Update, context: CallbackContext):
     """Обработчик ошибок"""
@@ -28,18 +32,19 @@ def error_handler(update: Update, context: CallbackContext):
             "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте еще раз или начните сначала с помощью команды /start"
         )
 
-def start(update: Update, context: CallbackContext):
+def start(update: Update, context: CallbackContext) -> None:
     """Обработчик команды /start"""
     keyboard = [
-        [InlineKeyboardButton("Начать обучение", callback_data='start_learning')],
-        [InlineKeyboardButton("Правила игры", callback_data='rules')],
-        [InlineKeyboardButton("Моя статистика", callback_data='stats')]
+        [InlineKeyboardButton("Java Core", callback_data='java_core')],
+        [InlineKeyboardButton("Spring Framework", callback_data='spring')],
+        [InlineKeyboardButton("Базы данных", callback_data='database')],
+        [InlineKeyboardButton("Docker & Kubernetes", callback_data='docker_k8s')],
+        [InlineKeyboardButton("Статистика", callback_data='stats')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
     update.message.reply_text(
-        "👋 Привет! Я бот для изучения Apache Kafka в игровом формате.\n\n"
-        "Выберите действие:",
+        'Привет! Я бот для подготовки к собеседованиям по Java и смежным технологиям.\n'
+        'Выберите раздел для изучения:',
         reply_markup=reply_markup
     )
 
@@ -98,31 +103,20 @@ def button_handler(update: Update, context: CallbackContext):
             
         user_id = query.from_user.id
         
-        if query.data == 'start_learning':
-            query.message.reply_text(
-                "🎮 Отлично! Давайте начнем изучение Kafka.\n\n"
-                "Вы будете изучать теорию по карточкам, каждая из которых содержит подробное объяснение темы.\n\n"
-                "Готовы начать?",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("Да, начинаем!", callback_data='start_cards')]
-                ])
-            )
-        elif query.data == 'rules':
-            query.message.reply_text(
-                "📖 Как это работает:\n\n"
-                "1. Каждая карточка содержит подробное объяснение темы\n"
-                "2. Карточки показываются в случайном порядке\n"
-                "3. Вы можете изучать карточки в своем темпе\n\n"
-                "Удачи в обучении! 🚀"
-            )
+        if query.data == 'java_core':
+            show_question(update, context, user_id)
+        elif query.data == 'spring':
+            show_question(update, context, user_id)
+        elif query.data == 'database':
+            show_question(update, context, user_id)
+        elif query.data == 'docker_k8s':
+            show_question(update, context, user_id)
         elif query.data == 'stats':
             progress = game_manager.get_level_progress(user_id)
             query.message.reply_text(
                 f"📊 Ваш прогресс:\n\n"
                 f"Изучено карточек: {progress['cards_viewed']} из {progress['total_cards']}"
             )
-        elif query.data == 'start_cards':
-            show_question(update, context, user_id)
         elif query.data == 'next_card':
             state = game_manager.get_user_state(user_id)
             state.next_card()
