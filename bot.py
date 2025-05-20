@@ -52,19 +52,35 @@ def show_question(update: Update, context: CallbackContext, user_id: int):
             )
         return
 
-    keyboard = []
-    for option in question.options:
-        keyboard.append([InlineKeyboardButton(option, callback_data=f"answer_{option}")])
+    state = game_manager.get_user_state(user_id)
+    progress = game_manager.get_level_progress(user_id)
+    
+    if state.current_step == 'theory':
+        message_text = (
+            f"📚 Теория (Уровень {progress['current_level']})\n\n"
+            f"{question.theory}\n\n"
+            "Нажмите 'Продолжить', чтобы увидеть краткое резюме."
+        )
+        keyboard = [[InlineKeyboardButton("Продолжить", callback_data='next_step')]]
+    elif state.current_step == 'summary':
+        message_text = (
+            f"📝 Краткое резюме:\n\n"
+            f"{question.theory_summary}\n\n"
+            "Нажмите 'Продолжить', чтобы перейти к вопросу."
+        )
+        keyboard = [[InlineKeyboardButton("Продолжить", callback_data='next_step')]]
+    else:  # question
+        keyboard = []
+        for option in question.options:
+            keyboard.append([InlineKeyboardButton(option, callback_data=f"answer_{option}")])
+        
+        message_text = (
+            f"❓ Вопрос {progress['questions_answered'] + 1} из {progress['questions_per_level']}\n"
+            f"Очки: {progress['score']}\n\n"
+            f"{question.text}"
+        )
     
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    progress = game_manager.get_level_progress(user_id)
-    message_text = (
-        f"Уровень {progress['current_level']}\n"
-        f"Очки: {progress['score']}\n"
-        f"Вопрос {progress['questions_answered'] + 1} из {progress['questions_per_level']}\n\n"
-        f"❓ {question.text}"
-    )
     
     if update.callback_query:
         update.callback_query.message.reply_text(message_text, reply_markup=reply_markup)
@@ -116,6 +132,10 @@ def button_handler(update: Update, context: CallbackContext):
         )
     elif query.data == 'level_1':
         show_question(update, context, user_id)
+    elif query.data == 'next_step':
+        state = game_manager.get_user_state(user_id)
+        state.next_step()
+        show_question(update, context, user_id)
     elif query.data.startswith('answer_'):
         answer = query.data[7:]  # Убираем префикс 'answer_'
         question = game_manager.get_current_question(user_id)
@@ -153,6 +173,7 @@ def button_handler(update: Update, context: CallbackContext):
                     ])
                 )
         else:
+            state.next_step()
             show_question(update, context, user_id)
 
 def main():
