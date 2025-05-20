@@ -1,8 +1,9 @@
 import os
 import logging
 from dotenv import load_dotenv
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
+from src.models import Question
 from src.cards import (
     JAVA_CORE_CARDS,
     SPRING_CARDS,
@@ -45,79 +46,19 @@ def start(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("🔄 Старт", callback_data='restart')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text(
-        'Привет! Я бот для подготовки к собеседованиям по Java и смежным технологиям.\n'
-        'Выберите раздел для изучения:',
-        reply_markup=reply_markup
-    )
-
-def button_handler(update: Update, context: CallbackContext) -> None:
-    """Обработчик нажатий на кнопки"""
-    query = update.callback_query
-    query.answer()
     
-    if query.data == 'restart':
-        # Очищаем состояние пользователя
-        user_id = update.callback_query.from_user.id
-        if user_id in user_states:
-            del user_states[user_id]
-        # Показываем приветственное сообщение
-        keyboard = [
-            [InlineKeyboardButton("Java Core", callback_data='java_core')],
-            [InlineKeyboardButton("Spring Framework", callback_data='spring')],
-            [InlineKeyboardButton("Базы данных", callback_data='database')],
-            [InlineKeyboardButton("Docker & Kubernetes", callback_data='docker_k8s')],
-            [InlineKeyboardButton("Алгоритмы", callback_data='algorithms')],
-            [InlineKeyboardButton("Статистика", callback_data='stats')],
-            [InlineKeyboardButton("🔄 Старт", callback_data='restart')]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
+    if update.callback_query:
         update.callback_query.edit_message_text(
             'Привет! Я бот для подготовки к собеседованиям по Java и смежным технологиям.\n'
             'Выберите раздел для изучения:',
             reply_markup=reply_markup
         )
-    elif query.data == 'java_core':
-        show_java_core_menu(update, context)
-    elif query.data == 'spring':
-        show_spring_menu(update, context)
-    elif query.data == 'database':
-        show_database_menu(update, context)
-    elif query.data == 'docker_k8s':
-        show_docker_k8s_menu(update, context)
-    elif query.data == 'algorithms':
-        show_algorithms_menu(update, context)
-    elif query.data == 'stats':
-        show_stats(update, context)
-    elif query.data == 'back':
-        show_main_menu(update, context)
-    elif query.data.startswith('java_topic_'):
-        show_java_topic(update, context, query.data.split('_')[2])
-    elif query.data.startswith('spring_topic_'):
-        show_spring_topic(update, context, query.data.split('_')[2])
-    elif query.data.startswith('database_topic_'):
-        show_database_topic(update, context, query.data.split('_')[2])
-    elif query.data.startswith('docker_k8s_topic_'):
-        show_docker_k8s_topic(update, context, query.data.split('_')[3])
-    elif query.data.startswith('algorithms_topic_'):
-        show_algorithms_topic(update, context, query.data.split('_')[2])
-
-def show_main_menu(update: Update, context: CallbackContext) -> None:
-    """Показать главное меню"""
-    keyboard = [
-        [InlineKeyboardButton("Java Core", callback_data='java_core')],
-        [InlineKeyboardButton("Spring Framework", callback_data='spring')],
-        [InlineKeyboardButton("Базы данных", callback_data='database')],
-        [InlineKeyboardButton("Docker & Kubernetes", callback_data='docker_k8s')],
-        [InlineKeyboardButton("Алгоритмы", callback_data='algorithms')],
-        [InlineKeyboardButton("Статистика", callback_data='stats')],
-        [InlineKeyboardButton("🔄 Старт", callback_data='restart')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    update.callback_query.edit_message_text(
-        'Выберите раздел для изучения:',
-        reply_markup=reply_markup
-    )
+    else:
+        update.message.reply_text(
+            'Привет! Я бот для подготовки к собеседованиям по Java и смежным технологиям.\n'
+            'Выберите раздел для изучения:',
+            reply_markup=reply_markup
+        )
 
 def show_java_core_menu(update: Update, context: CallbackContext) -> None:
     """Показать меню тем Java Core"""
@@ -184,20 +125,134 @@ def show_docker_k8s_menu(update: Update, context: CallbackContext) -> None:
     )
 
 def show_algorithms_menu(update: Update, context: CallbackContext) -> None:
-    """Показать меню тем по алгоритмам"""
+    """Показывает меню алгоритмов"""
+    query = update.callback_query
+    query.answer()
+    
     keyboard = []
     for i, card in enumerate(ALGORITHMS_CARDS):
         keyboard.append([InlineKeyboardButton(
-            card["question"],
-            callback_data=f'algorithms_topic_{i}'
+            f"{i+1}. {card.text}",
+            callback_data=f"algo_{i}"
         )])
-    keyboard.append([InlineKeyboardButton("Назад", callback_data='back')])
+    
+    keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data="back_to_main")])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
-    update.callback_query.edit_message_text(
+    query.edit_message_text(
         text="Выберите тему по алгоритмам:",
         reply_markup=reply_markup
     )
+
+def show_card(update: Update, context: CallbackContext, card: Question) -> None:
+    """Показывает карточку с вопросом и ответом"""
+    query = update.callback_query
+    query.answer()
+    
+    keyboard = [
+        [InlineKeyboardButton("📝 Теория", callback_data="theory")],
+        [InlineKeyboardButton("◀️ Назад", callback_data="back_to_section")]
+    ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    query.edit_message_text(
+        text=f"*Вопрос:*\n{card.text}\n\n*Ответ:*\n{card.correct_answer}",
+        reply_markup=reply_markup,
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+def show_theory(update: Update, context: CallbackContext, card: Question) -> None:
+    """Показывает теорию по карточке"""
+    query = update.callback_query
+    query.answer()
+    
+    keyboard = [
+        [InlineKeyboardButton("◀️ Назад к вопросу", callback_data="back_to_card")],
+        [InlineKeyboardButton("◀️ Назад к разделу", callback_data="back_to_section")]
+    ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    query.edit_message_text(
+        text=f"*Теория:*\n\n{card.theory}\n\n*Краткое содержание:*\n{card.theory_summary}",
+        reply_markup=reply_markup,
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+def button_handler(update: Update, context: CallbackContext) -> None:
+    """Обработчик нажатий на кнопки"""
+    query = update.callback_query
+    data = query.data
+    
+    if data == "java_core":
+        show_java_core_menu(update, context)
+    elif data == "spring":
+        show_spring_menu(update, context)
+    elif data == "database":
+        show_database_menu(update, context)
+    elif data == "docker_k8s":
+        show_docker_k8s_menu(update, context)
+    elif data == "algorithms":
+        show_algorithms_menu(update, context)
+    elif data == "back_to_main":
+        start(update, context)
+    elif data == "back_to_section":
+        # Определяем текущий раздел из контекста
+        current_section = context.user_data.get('current_section', 'main')
+        if current_section == 'java_core':
+            show_java_core_menu(update, context)
+        elif current_section == 'spring':
+            show_spring_menu(update, context)
+        elif current_section == 'database':
+            show_database_menu(update, context)
+        elif current_section == 'docker_k8s':
+            show_docker_k8s_menu(update, context)
+        elif current_section == 'algorithms':
+            show_algorithms_menu(update, context)
+    elif data == "back_to_card":
+        # Возвращаемся к текущей карточке
+        current_card = context.user_data.get('current_card')
+        if current_card:
+            show_card(update, context, current_card)
+    elif data == "theory":
+        # Показываем теорию для текущей карточки
+        current_card = context.user_data.get('current_card')
+        if current_card:
+            show_theory(update, context, current_card)
+    elif data.startswith("java_"):
+        # Обработка карточек Java Core
+        index = int(data.split("_")[1])
+        card = JAVA_CORE_CARDS[index]
+        context.user_data['current_card'] = card
+        context.user_data['current_section'] = 'java_core'
+        show_card(update, context, card)
+    elif data.startswith("spring_"):
+        # Обработка карточек Spring
+        index = int(data.split("_")[1])
+        card = SPRING_CARDS[index]
+        context.user_data['current_card'] = card
+        context.user_data['current_section'] = 'spring'
+        show_card(update, context, card)
+    elif data.startswith("db_"):
+        # Обработка карточек Database
+        index = int(data.split("_")[1])
+        card = DATABASE_CARDS[index]
+        context.user_data['current_card'] = card
+        context.user_data['current_section'] = 'database'
+        show_card(update, context, card)
+    elif data.startswith("dk_"):
+        # Обработка карточек Docker & Kubernetes
+        index = int(data.split("_")[1])
+        card = DOCKER_K8S_CARDS[index]
+        context.user_data['current_card'] = card
+        context.user_data['current_section'] = 'docker_k8s'
+        show_card(update, context, card)
+    elif data.startswith("algo_"):
+        # Обработка карточек Algorithms
+        index = int(data.split("_")[1])
+        card = ALGORITHMS_CARDS[index]
+        context.user_data['current_card'] = card
+        context.user_data['current_section'] = 'algorithms'
+        show_card(update, context, card)
 
 def show_java_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
     """Показать тему по Java Core"""
