@@ -528,8 +528,76 @@ def show_docker_k8s_topic(update: Update, context: CallbackContext, topic_index:
     """Показать тему по Docker и Kubernetes"""
     card = DOCKER_K8S_CARDS[int(topic_index)]
     message = f"<b>{html.escape(card.text)}</b>\n\n"
-    message += f"{html.escape(card.theory)}\n\n"
-    message += f"<b>Практические примеры:</b>\n{html.escape(card.explanation)}"
+    
+    # Обработка теории с учетом различных типов кода
+    theory_text = card.theory
+    
+    # Обработка Dockerfile кода
+    theory_parts = theory_text.split('```dockerfile')
+    processed_theory = html.escape(theory_parts[0])
+    for i in range(1, len(theory_parts)):
+        if '```' in theory_parts[i]:
+            code, rest = theory_parts[i].split('```', 1)
+            processed_theory += f'<pre><code class="language-dockerfile">{html.escape(code.strip())}</code></pre>{html.escape(rest)}'
+        else:
+            processed_theory += html.escape(theory_parts[i])
+    
+    # Обработка YAML кода
+    theory_parts = processed_theory.split('```yaml')
+    processed_theory = theory_parts[0]
+    for i in range(1, len(theory_parts)):
+        if '```' in theory_parts[i]:
+            code, rest = theory_parts[i].split('```', 1)
+            processed_theory += f'<pre><code class="language-yaml">{html.escape(code.strip())}</code></pre>{rest}'
+        else:
+            processed_theory += theory_parts[i]
+    
+    # Обработка shell команд
+    theory_parts = processed_theory.split('```bash')
+    processed_theory = theory_parts[0]
+    for i in range(1, len(theory_parts)):
+        if '```' in theory_parts[i]:
+            code, rest = theory_parts[i].split('```', 1)
+            processed_theory += f'<pre><code class="language-bash">{html.escape(code.strip())}</code></pre>{rest}'
+        else:
+            processed_theory += theory_parts[i]
+            
+    message += f"{processed_theory}\n\n"
+    
+    # Аналогичная обработка для примеров
+    explanation_text = card.explanation
+    
+    # Обработка Dockerfile кода в примерах
+    explanation_parts = explanation_text.split('```dockerfile')
+    processed_explanation = html.escape(explanation_parts[0])
+    for i in range(1, len(explanation_parts)):
+        if '```' in explanation_parts[i]:
+            code, rest = explanation_parts[i].split('```', 1)
+            processed_explanation += f'<pre><code class="language-dockerfile">{html.escape(code.strip())}</code></pre>{html.escape(rest)}'
+        else:
+            processed_explanation += html.escape(explanation_parts[i])
+    
+    # Обработка YAML кода в примерах
+    explanation_parts = processed_explanation.split('```yaml')
+    processed_explanation = explanation_parts[0]
+    for i in range(1, len(explanation_parts)):
+        if '```' in explanation_parts[i]:
+            code, rest = explanation_parts[i].split('```', 1)
+            processed_explanation += f'<pre><code class="language-yaml">{html.escape(code.strip())}</code></pre>{rest}'
+        else:
+            processed_explanation += explanation_parts[i]
+    
+    # Обработка shell команд в примерах
+    explanation_parts = processed_explanation.split('```bash')
+    processed_explanation = explanation_parts[0]
+    for i in range(1, len(explanation_parts)):
+        if '```' in explanation_parts[i]:
+            code, rest = explanation_parts[i].split('```', 1)
+            processed_explanation += f'<pre><code class="language-bash">{html.escape(code.strip())}</code></pre>{rest}'
+        else:
+            processed_explanation += explanation_parts[i]
+            
+    message += f"<b>Практические примеры:</b>\n{processed_explanation}"
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='docker_k8s')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
