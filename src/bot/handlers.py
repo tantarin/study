@@ -11,6 +11,7 @@ from src.cards import (
     DOCKER_K8S_CARDS,
     ALGORITHMS
 )
+import tempfile
 
 # Настройка логирования
 logging.basicConfig(
@@ -152,10 +153,66 @@ def show_algorithms_menu(update: Update, context: CallbackContext) -> None:
         reply_markup=reply_markup
     )
 
+def create_theory_markdown(algorithms, category: str) -> str:
+    """Создает Markdown файл с теорией по категории алгоритмов"""
+    # Создаем временный файл
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.md', encoding='utf-8') as tmp_file:
+        # Записываем заголовок
+        tmp_file.write(f'# Теория по разделу: {category.capitalize()}\n\n')
+        
+        # Добавляем содержание для каждого алгоритма
+        for algo in algorithms:
+            if algo.category == category:
+                # Заголовок алгоритма
+                tmp_file.write(f'## {algo.title}\n\n')
+                
+                # Описание
+                tmp_file.write(f'### Описание\n{algo.description}\n\n')
+                
+                # Сложность
+                tmp_file.write(f'### Сложность\n{algo.complexity}\n\n')
+                
+                # Теория
+                tmp_file.write(f'### Теория\n{algo.theory}\n\n')
+                
+                # Примеры
+                if algo.examples:
+                    tmp_file.write('### Примеры\n')
+                    for i, example in enumerate(algo.examples, 1):
+                        tmp_file.write(f'#### Пример {i}\n')
+                        tmp_file.write(f'- Вход: `{example.input_data}`\n')
+                        tmp_file.write(f'- Выход: `{example.output_data}`\n')
+                        tmp_file.write(f'- Объяснение: {example.explanation}\n\n')
+                
+                # Код на Java
+                tmp_file.write('### Реализация на Java\n```java\n')
+                tmp_file.write(algo.java_code)
+                tmp_file.write('\n```\n\n')
+                
+                # Код на Python (если есть)
+                if algo.python_code:
+                    tmp_file.write('### Реализация на Python\n```python\n')
+                    tmp_file.write(algo.python_code)
+                    tmp_file.write('\n```\n\n')
+                
+                # Задачи на LeetCode
+                if algo.leetcode_problems:
+                    tmp_file.write('### Задачи на LeetCode\n')
+                    for problem in algo.leetcode_problems:
+                        tmp_file.write(f'- {problem}\n')
+                    tmp_file.write('\n')
+                
+                # Визуализация
+                tmp_file.write(f'### Визуализация\n{algo.visualization_url}\n\n')
+                
+                # Разделитель между алгоритмами
+                tmp_file.write('---\n\n')
+        
+        return tmp_file.name
+
 def show_algorithm_category(update: Update, context: CallbackContext, category: str) -> None:
     """Показывает список алгоритмов в категории"""
     query = update.callback_query
-    query.answer()
     
     keyboard = []
     for i, algo in enumerate(ALGORITHMS):
@@ -166,6 +223,8 @@ def show_algorithm_category(update: Update, context: CallbackContext, category: 
                 callback_data=f"a_{i}"
             )])
     
+    # Добавляем кнопку для создания Markdown
+    keyboard.append([InlineKeyboardButton("📝 Скачать теорию в Markdown", callback_data=f"md_{category}")])
     keyboard.append([InlineKeyboardButton("◀️ Назад к категориям", callback_data="algorithms")])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -291,6 +350,21 @@ def button_handler(update: Update, context: CallbackContext) -> None:
     elif data.startswith("a_"):
         algo_index = int(data[2:])
         show_algorithm(update, context, algo_index)
+    elif data.startswith("md_"):
+        category = data[3:]
+        # Создаем Markdown
+        md_path = create_theory_markdown(ALGORITHMS, category)
+        # Отправляем файл
+        with open(md_path, 'rb') as md_file:
+            query.message.reply_document(
+                document=md_file,
+                filename=f'theory_{category}.md',
+                caption=f'Теория по разделу: {category.capitalize()}'
+            )
+        # Удаляем временный файл
+        os.unlink(md_path)
+        # Отвечаем на callback
+        query.answer("Markdown файл создан и отправлен!")
     elif data == "back":
         start(update, context)
     elif data == "back_to_section":
