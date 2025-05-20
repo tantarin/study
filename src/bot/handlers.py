@@ -95,6 +95,28 @@ def show_spring_menu(update: Update, context: CallbackContext) -> None:
         reply_markup=reply_markup
     )
 
+def create_database_markdown(cards) -> str:
+    """Создает Markdown файл с теорией по базам данных"""
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.md', encoding='utf-8') as tmp_file:
+        tmp_file.write('# Теория по базам данных\n\n')
+        
+        for card in cards:
+            # Заголовок темы
+            tmp_file.write(f'## {card.text}\n\n')
+            
+            # Теория
+            tmp_file.write('### Теория\n')
+            tmp_file.write(f'{card.theory}\n\n')
+            
+            # Примеры
+            tmp_file.write('### Практические примеры\n')
+            tmp_file.write(f'{card.explanation}\n\n')
+            
+            # Разделитель между темами
+            tmp_file.write('---\n\n')
+        
+        return tmp_file.name
+
 def show_database_menu(update: Update, context: CallbackContext) -> None:
     """Показать меню тем по базам данных"""
     keyboard = []
@@ -103,6 +125,9 @@ def show_database_menu(update: Update, context: CallbackContext) -> None:
             card.text,
             callback_data=f'database_topic_{i}'
         )])
+    
+    # Добавляем кнопку для скачивания теории
+    keyboard.append([InlineKeyboardButton("📝 Скачать теорию в Markdown", callback_data="md_database")])
     keyboard.append([InlineKeyboardButton("Назад", callback_data='back')])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -359,19 +384,34 @@ def button_handler(update: Update, context: CallbackContext) -> None:
         show_algorithm(update, context, algo_index)
     elif data.startswith("md_"):
         category = data[3:]
-        # Создаем Markdown
-        md_path = create_theory_markdown(ALGORITHMS, category)
-        # Отправляем файл
-        with open(md_path, 'rb') as md_file:
-            query.message.reply_document(
-                document=md_file,
-                filename=f'theory_{category}.md',
-                caption=f'Теория по разделу: {category.capitalize()}'
-            )
-        # Удаляем временный файл
-        os.unlink(md_path)
-        # Отвечаем на callback
-        query.answer("Markdown файл создан и отправлен!")
+        if category == "database":
+            # Создаем Markdown для баз данных
+            md_path = create_database_markdown(DATABASE_CARDS)
+            # Отправляем файл
+            with open(md_path, 'rb') as md_file:
+                query.message.reply_document(
+                    document=md_file,
+                    filename='theory_database.md',
+                    caption='Теория по разделу: Базы данных'
+                )
+            # Удаляем временный файл
+            os.unlink(md_path)
+            # Отвечаем на callback
+            query.answer("Markdown файл создан и отправлен!")
+        else:
+            # Создаем Markdown для алгоритмов
+            md_path = create_theory_markdown(ALGORITHMS, category)
+            # Отправляем файл
+            with open(md_path, 'rb') as md_file:
+                query.message.reply_document(
+                    document=md_file,
+                    filename=f'theory_{category}.md',
+                    caption=f'Теория по разделу: {category.capitalize()}'
+                )
+            # Удаляем временный файл
+            os.unlink(md_path)
+            # Отвечаем на callback
+            query.answer("Markdown файл создан и отправлен!")
     elif data == "back":
         start(update, context)
     elif data == "back_to_section":
