@@ -488,19 +488,11 @@ def button_handler(update: Update, context: CallbackContext) -> None:
     elif data.startswith("md_"):
         category = data[3:]
         if category == "full":
-            # Создаем полный Markdown со всей теорией
-            md_path = create_full_theory_markdown()
-            # Отправляем файл
-            with open(md_path, 'rb') as md_file:
-                query.message.reply_document(
-                    document=md_file,
-                    filename='full_theory.md',
-                    caption='Полная теория по всем разделам'
-                )
-            # Удаляем временный файл
-            os.unlink(md_path)
-            # Отвечаем на callback
-            query.answer("Полный Markdown файл создан и отправлен!")
+            # Открываем теорию в браузере
+            from src.theory_server import open_theory_in_browser
+            open_theory_in_browser()
+            query.message.reply_text("Теория открыта в вашем браузере! Если страница не открылась автоматически, перейдите по адресу: http://localhost:5000")
+            query.answer("Теория открыта в браузере!")
         elif category == "database":
             # Создаем Markdown для баз данных
             md_path = create_database_markdown(DATABASE_CARDS)
