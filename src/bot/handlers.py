@@ -16,6 +16,9 @@ from src.cards import (
 from src.cards.algorithms import ALGORITHMS
 from src.cards.system_design import SYSTEM_DESIGN_CARDS
 import tempfile
+from pygments import highlight
+from pygments.lexers import get_lexer_by_name
+from pygments.formatters import HtmlFormatter
 
 # Настройка логирования
 logging.basicConfig(
@@ -490,12 +493,55 @@ def show_system_design_menu(update: Update, context: CallbackContext) -> None:
         reply_markup=reply_markup
     )
 
+def process_code_blocks(text: str, language: str = None) -> str:
+    """Обрабатывает блоки кода в тексте и добавляет подсветку синтаксиса"""
+    if not text:
+        return ""
+        
+    # Если язык не указан, пробуем определить его из текста
+    if not language:
+        code_blocks = re.findall(r'```(\w+)?\n(.*?)```', text, re.DOTALL)
+        if code_blocks:
+            language = code_blocks[0][0] or 'text'
+    
+    # Разбиваем текст на части по блокам кода
+    parts = text.split('```')
+    result = []
+    
+    for i, part in enumerate(parts):
+        if i % 2 == 0:  # Обычный текст
+            result.append(html.escape(part))
+        else:  # Блок кода
+            # Определяем язык и код
+            if '\n' in part:
+                lang, code = part.split('\n', 1)
+            else:
+                lang, code = language or 'text', part
+                
+            # Подсвечиваем код
+            try:
+                lexer = get_lexer_by_name(lang)
+                formatter = HtmlFormatter(style='monokai')
+                highlighted_code = highlight(code.strip(), lexer, formatter)
+                
+                # Удаляем div и span теги, оставляем только pre и code
+                highlighted_code = re.sub(r'<div[^>]*>|</div>', '', highlighted_code)
+                highlighted_code = re.sub(r'<span[^>]*>|</span>', '', highlighted_code)
+                
+                # Добавляем класс языка для стилизации
+                result.append(f'<pre><code class="language-{lang}">{highlighted_code}</code></pre>')
+            except:
+                result.append(f'<pre><code>{html.escape(code.strip())}</code></pre>')
+    
+    return ''.join(result)
+
 def show_system_design_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
     """Показать тему по System Design"""
     card = SYSTEM_DESIGN_CARDS[topic_index]
     message = f"<b>{html.escape(card.text)}</b>\n\n"
-    message += f"{html.escape(card.theory)}\n\n"
-    message += f"<b>Практические примеры:</b>\n{html.escape(card.explanation)}"
+    message += process_code_blocks(card.theory)
+    message += "\n\n<b>Практические примеры:</b>\n"
+    message += process_code_blocks(card.explanation)
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='system_design')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -647,24 +693,43 @@ def show_java_topic(update: Update, context: CallbackContext, topic_index: int) 
     """Показать тему по Java Core"""
     card = JAVA_CORE_CARDS[int(topic_index)]
     message = f"<b>{html.escape(card.text)}</b>\n\n"
-    message += f"{html.escape(card.theory)}\n\n"
-    message += f"<b>Практические примеры:</b>\n{html.escape(card.explanation)}"
+    message += process_code_blocks(card.theory, 'java')
+    message += "\n\n<b>Практические примеры:</b>\n"
+    message += process_code_blocks(card.explanation, 'java')
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='java_core')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    update.callback_query.edit_message_text(
-        text=message,
-        reply_markup=reply_markup,
-        parse_mode=ParseMode.HTML
-    )
+    # Разбиваем сообщение на части, если оно слишком длинное
+    if len(message) > 4096:
+        parts = [message[i:i+4096] for i in range(0, len(message), 4096)]
+        for i, part in enumerate(parts):
+            if i == 0:
+                update.callback_query.edit_message_text(
+                    text=part,
+                    reply_markup=reply_markup if i == len(parts)-1 else None,
+                    parse_mode=ParseMode.HTML
+                )
+            else:
+                update.callback_query.message.reply_text(
+                    text=part,
+                    reply_markup=reply_markup if i == len(parts)-1 else None,
+                    parse_mode=ParseMode.HTML
+                )
+    else:
+        update.callback_query.edit_message_text(
+            text=message,
+            reply_markup=reply_markup,
+            parse_mode=ParseMode.HTML
+        )
 
 def show_spring_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
     """Показать тему по Spring"""
     card = SPRING_CARDS[int(topic_index)]
     message = f"<b>{html.escape(card.text)}</b>\n\n"
-    message += f"{html.escape(card.theory)}\n\n"
-    message += f"<b>Практические примеры:</b>\n{html.escape(card.explanation)}"
+    message += process_code_blocks(card.theory, 'java')
+    message += "\n\n<b>Практические примеры:</b>\n"
+    message += process_code_blocks(card.explanation, 'java')
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='spring')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -679,30 +744,9 @@ def show_database_topic(update: Update, context: CallbackContext, topic_index: i
     """Показать тему по базам данных"""
     card = DATABASE_CARDS[int(topic_index)]
     message = f"<b>{html.escape(card.text)}</b>\n\n"
-    
-    # Обработка теории с учетом SQL-кода
-    theory_parts = card.theory.split('```sql')
-    processed_theory = html.escape(theory_parts[0])
-    for i in range(1, len(theory_parts)):
-        if '```' in theory_parts[i]:
-            code, rest = theory_parts[i].split('```', 1)
-            processed_theory += f'<pre><code class="language-sql">{html.escape(code.strip())}</code></pre>{html.escape(rest)}'
-        else:
-            processed_theory += html.escape(theory_parts[i])
-    
-    message += f"{processed_theory}\n\n"
-    
-    # Обработка примеров с учетом SQL-кода
-    explanation_parts = card.explanation.split('```sql')
-    processed_explanation = html.escape(explanation_parts[0])
-    for i in range(1, len(explanation_parts)):
-        if '```' in explanation_parts[i]:
-            code, rest = explanation_parts[i].split('```', 1)
-            processed_explanation += f'<pre><code class="language-sql">{html.escape(code.strip())}</code></pre>{html.escape(rest)}'
-        else:
-            processed_explanation += html.escape(explanation_parts[i])
-            
-    message += f"<b>Практические примеры:</b>\n{processed_explanation}"
+    message += process_code_blocks(card.theory, 'sql')
+    message += "\n\n<b>Практические примеры:</b>\n"
+    message += process_code_blocks(card.explanation, 'sql')
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='database')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -717,76 +761,9 @@ def show_docker_k8s_topic(update: Update, context: CallbackContext, topic_index:
     """Показать тему по Docker и Kubernetes"""
     card = DOCKER_K8S_CARDS[int(topic_index)]
     message = f"<b>{html.escape(card.text)}</b>\n\n"
-    
-    # Обработка теории с учетом различных типов кода
-    theory_text = card.theory
-    
-    # Обработка Dockerfile кода
-    theory_parts = theory_text.split('```dockerfile')
-    processed_theory = html.escape(theory_parts[0])
-    for i in range(1, len(theory_parts)):
-        if '```' in theory_parts[i]:
-            code, rest = theory_parts[i].split('```', 1)
-            processed_theory += f'<pre><code class="language-dockerfile">{html.escape(code.strip())}</code></pre>{html.escape(rest)}'
-        else:
-            processed_theory += html.escape(theory_parts[i])
-    
-    # Обработка YAML кода
-    theory_parts = processed_theory.split('```yaml')
-    processed_theory = theory_parts[0]
-    for i in range(1, len(theory_parts)):
-        if '```' in theory_parts[i]:
-            code, rest = theory_parts[i].split('```', 1)
-            processed_theory += f'<pre><code class="language-yaml">{html.escape(code.strip())}</code></pre>{rest}'
-        else:
-            processed_theory += theory_parts[i]
-    
-    # Обработка shell команд
-    theory_parts = processed_theory.split('```bash')
-    processed_theory = theory_parts[0]
-    for i in range(1, len(theory_parts)):
-        if '```' in theory_parts[i]:
-            code, rest = theory_parts[i].split('```', 1)
-            processed_theory += f'<pre><code class="language-bash">{html.escape(code.strip())}</code></pre>{rest}'
-        else:
-            processed_theory += theory_parts[i]
-            
-    message += f"{processed_theory}\n\n"
-    
-    # Аналогичная обработка для примеров
-    explanation_text = card.explanation
-    
-    # Обработка Dockerfile кода в примерах
-    explanation_parts = explanation_text.split('```dockerfile')
-    processed_explanation = html.escape(explanation_parts[0])
-    for i in range(1, len(explanation_parts)):
-        if '```' in explanation_parts[i]:
-            code, rest = explanation_parts[i].split('```', 1)
-            processed_explanation += f'<pre><code class="language-dockerfile">{html.escape(code.strip())}</code></pre>{html.escape(rest)}'
-        else:
-            processed_explanation += html.escape(explanation_parts[i])
-    
-    # Обработка YAML кода в примерах
-    explanation_parts = processed_explanation.split('```yaml')
-    processed_explanation = explanation_parts[0]
-    for i in range(1, len(explanation_parts)):
-        if '```' in explanation_parts[i]:
-            code, rest = explanation_parts[i].split('```', 1)
-            processed_explanation += f'<pre><code class="language-yaml">{html.escape(code.strip())}</code></pre>{rest}'
-        else:
-            processed_explanation += explanation_parts[i]
-    
-    # Обработка shell команд в примерах
-    explanation_parts = processed_explanation.split('```bash')
-    processed_explanation = explanation_parts[0]
-    for i in range(1, len(explanation_parts)):
-        if '```' in explanation_parts[i]:
-            code, rest = explanation_parts[i].split('```', 1)
-            processed_explanation += f'<pre><code class="language-bash">{html.escape(code.strip())}</code></pre>{rest}'
-        else:
-            processed_explanation += explanation_parts[i]
-            
-    message += f"<b>Практические примеры:</b>\n{processed_explanation}"
+    message += process_code_blocks(card.theory, 'yaml')
+    message += "\n\n<b>Практические примеры:</b>\n"
+    message += process_code_blocks(card.explanation, 'yaml')
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='docker_k8s')]]
     reply_markup = InlineKeyboardMarkup(keyboard)

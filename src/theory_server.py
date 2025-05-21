@@ -2,13 +2,26 @@ import markdown2
 import webbrowser
 import os
 from src.bot.handlers import create_full_theory_markdown
+from pygments import highlight
+from pygments.lexers import get_lexer_by_name
+from pygments.formatters import HtmlFormatter
+import re
+
+def highlight_code(code, language):
+    """Подсвечивает синтаксис кода с использованием Pygments"""
+    try:
+        lexer = get_lexer_by_name(language)
+        formatter = HtmlFormatter(style='monokai')
+        return highlight(code, lexer, formatter)
+    except:
+        return code
 
 def convert_md_to_html(md_file_path):
-    """Конвертирует Markdown файл в HTML с красивым оформлением"""
+    """Конвертирует Markdown файл в HTML с красивым оформлением и подсветкой синтаксиса"""
     with open(md_file_path, 'r', encoding='utf-8') as f:
         md_content = f.read()
     
-    # Добавляем CSS стили для красивого оформления
+    # Добавляем CSS стили для красивого оформления и подсветки синтаксиса
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -34,15 +47,20 @@ def convert_md_to_html(md_file_path):
                 padding-bottom: 0.5rem;
             }}
             pre {{
-                background-color: #f8f9fa;
+                background-color: #272822;
                 padding: 1rem;
                 border-radius: 4px;
                 overflow-x: auto;
+                margin: 1rem 0;
             }}
             code {{
-                background-color: #f8f9fa;
-                padding: 0.2rem 0.4rem;
-                border-radius: 3px;
+                font-family: 'Fira Code', 'Consolas', monospace;
+            }}
+            .highlight {{
+                margin: 1rem 0;
+            }}
+            .highlight pre {{
+                margin: 0;
             }}
             blockquote {{
                 border-left: 4px solid #3498db;
@@ -69,6 +87,16 @@ def convert_md_to_html(md_file_path):
     </body>
     </html>
     """
+    
+    # Обрабатываем блоки кода для подсветки синтаксиса
+    code_block_pattern = r'<pre><code class="language-(\w+)">(.*?)</code></pre>'
+    def replace_code_block(match):
+        language = match.group(1)
+        code = match.group(2)
+        highlighted_code = highlight_code(code, language)
+        return highlighted_code
+    
+    html_content = re.sub(code_block_pattern, replace_code_block, html_content, flags=re.DOTALL)
     
     # Сохраняем HTML файл
     html_file_path = md_file_path.replace('.md', '.html')
