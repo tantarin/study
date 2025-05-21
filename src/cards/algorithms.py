@@ -419,5 +419,681 @@ ALGORITHMS.extend([
         ],
         category="графы",
         difficulty="hard"
+    ),
+
+    Algorithm(
+        title="Line Reflection",
+        description="Проверка возможности отражения точек относительно вертикальной линии",
+        complexity="Временная сложность: O(n), Пространственная сложность: O(n)",
+        theory="""Задача: Проверить, можно ли отразить точки на плоскости относительно вертикальной линии так, чтобы получился симметричный набор.
+
+Подход к решению:
+1. Найти минимальную и максимальную x-координаты для определения центральной линии
+2. Для каждой точки проверить наличие её отражения относительно центральной линии
+3. Использовать HashSet для эффективной проверки наличия отраженных точек""",
+        visualization_url="https://leetcode.com/problems/line-reflection/",
+        java_code='''public class Solution {
+    public boolean isReflected(int[][] points) {
+        if (points == null || points.length == 0) return true;
+        
+        int min = Integer.MAX_VALUE;
+        int max = Integer.MIN_VALUE;
+        Set<String> set = new HashSet<>();
+        
+        for (int[] p : points) {
+            min = Math.min(min, p[0]);
+            max = Math.max(max, p[0]);
+            set.add(p[0] + "," + p[1]);
+        }
+        
+        int sum = min + max;
+        for (int[] p : points) {
+            String reflection = (sum - p[0]) + "," + p[1];
+            if (!set.contains(reflection)) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+}''',
+        python_code='''def is_reflected(points: List[List[int]]) -> bool:
+    if not points:
+        return True
+        
+    min_x = min(p[0] for p in points)
+    max_x = max(p[0] for p in points)
+    point_set = {f"{p[0]},{p[1]}" for p in points}
+    
+    sum_x = min_x + max_x
+    for p in points:
+        reflection = f"{sum_x - p[0]},{p[1]}"
+        if reflection not in point_set:
+            return False
+            
+    return True''',
+        leetcode_problems=[
+            "356. Line Reflection - https://leetcode.com/problems/line-reflection/"
+        ],
+        examples=[
+            AlgorithmExample(
+                input_data="points = [[1,1],[-1,1]]",
+                output_data="true",
+                explanation="Точки можно отразить относительно линии x = 0"
+            )
+        ],
+        category="геометрия",
+        difficulty="medium"
+    ),
+
+    Algorithm(
+        title="Longest Subarray of 1's After Deleting One Element",
+        description="Поиск максимальной длины подмассива из единиц после удаления одного элемента",
+        complexity="Временная сложность: O(n), Пространственная сложность: O(1)",
+        theory="""Задача: Найти максимальную длину подмассива из единиц после удаления одного элемента.
+
+Подход к решению:
+1. Использовать метод скользящего окна
+2. Поддерживать счетчик нулей в текущем окне
+3. Если количество нулей превышает 1, сдвигать левую границу окна
+4. Обновлять максимальную длину при каждом валидном окне""",
+        visualization_url="https://leetcode.com/problems/longest-subarray-of-1s-after-deleting-one-element/",
+        java_code='''public class Solution {
+    public int longestSubarray(int[] nums) {
+        int left = 0;
+        int zeros = 0;
+        int maxLen = 0;
+        
+        for (int right = 0; right < nums.length; right++) {
+            if (nums[right] == 0) {
+                zeros++;
+            }
+            
+            while (zeros > 1) {
+                if (nums[left] == 0) {
+                    zeros--;
+                }
+                left++;
+            }
+            
+            maxLen = Math.max(maxLen, right - left);
+        }
+        
+        return maxLen;
+    }
+}''',
+        python_code='''def longest_subarray(nums: List[int]) -> int:
+    left = zeros = max_len = 0
+    
+    for right in range(len(nums)):
+        if nums[right] == 0:
+            zeros += 1
+            
+        while zeros > 1:
+            if nums[left] == 0:
+                zeros -= 1
+            left += 1
+            
+        max_len = max(max_len, right - left)
+        
+    return max_len''',
+        leetcode_problems=[
+            "1493. Longest Subarray of 1's After Deleting One Element - https://leetcode.com/problems/longest-subarray-of-1s-after-deleting-one-element/"
+        ],
+        examples=[
+            AlgorithmExample(
+                input_data="nums = [1,1,0,1]",
+                output_data="3",
+                explanation="После удаления нуля получаем подмассив [1,1,1] длиной 3"
+            )
+        ],
+        category="массивы",
+        difficulty="medium"
+    ),
+
+    Algorithm(
+        title="String Compression",
+        description="Сжатие строки с заменой повторяющихся символов на их количество",
+        complexity="Временная сложность: O(n), Пространственная сложность: O(1)",
+        theory="""Задача: Сжать строку, заменяя повторяющиеся символы на их количество.
+
+Подход к решению:
+1. Использовать два указателя: один для чтения, другой для записи
+2. Подсчитывать количество повторений текущего символа
+3. Записывать символ и его количество (если больше 1)
+4. Возвращать новую длину строки""",
+        visualization_url="https://leetcode.com/problems/string-compression/",
+        java_code='''public class Solution {
+    public int compress(char[] chars) {
+        int write = 0;
+        int read = 0;
+        
+        while (read < chars.length) {
+            char current = chars[read];
+            int count = 0;
+            
+            while (read < chars.length && chars[read] == current) {
+                read++;
+                count++;
+            }
+            
+            chars[write++] = current;
+            
+            if (count > 1) {
+                for (char c : String.valueOf(count).toCharArray()) {
+                    chars[write++] = c;
+                }
+            }
+        }
+        
+        return write;
+    }
+}''',
+        python_code='''def compress(chars: List[str]) -> int:
+    write = read = 0
+    
+    while read < len(chars):
+        current = chars[read]
+        count = 0
+        
+        while read < len(chars) and chars[read] == current:
+            read += 1
+            count += 1
+            
+        chars[write] = current
+        write += 1
+        
+        if count > 1:
+            for c in str(count):
+                chars[write] = c
+                write += 1
+                
+    return write''',
+        leetcode_problems=[
+            "443. String Compression - https://leetcode.com/problems/string-compression/"
+        ],
+        examples=[
+            AlgorithmExample(
+                input_data='chars = ["a","a","b","b","c","c","c"]',
+                output_data='6, chars = ["a","2","b","2","c","3"]',
+                explanation="Строка сжата до 'a2b2c3'"
+            )
+        ],
+        category="строки",
+        difficulty="medium"
+    ),
+
+    Algorithm(
+        title="Valid Palindrome",
+        description="Проверка строки на палиндром с игнорированием не-алфавитных символов",
+        complexity="Временная сложность: O(n), Пространственная сложность: O(1)",
+        theory="""Задача: Проверить, является ли строка палиндромом, игнорируя не-алфавитные символы.
+
+Подход к решению:
+1. Использовать два указателя: с начала и конца строки
+2. Пропускать не-алфавитные символы
+3. Сравнивать символы в нижнем регистре
+4. Продолжать до встречи указателей""",
+        visualization_url="https://leetcode.com/problems/valid-palindrome/",
+        java_code='''public class Solution {
+    public boolean isPalindrome(String s) {
+        int left = 0;
+        int right = s.length() - 1;
+        
+        while (left < right) {
+            while (left < right && !Character.isLetterOrDigit(s.charAt(left))) {
+                left++;
+            }
+            while (left < right && !Character.isLetterOrDigit(s.charAt(right))) {
+                right--;
+            }
+            
+            if (Character.toLowerCase(s.charAt(left)) != 
+                Character.toLowerCase(s.charAt(right))) {
+                return false;
+            }
+            
+            left++;
+            right--;
+        }
+        
+        return true;
+    }
+}''',
+        python_code='''def is_palindrome(s: str) -> bool:
+    left, right = 0, len(s) - 1
+    
+    while left < right:
+        while left < right and not s[left].isalnum():
+            left += 1
+        while left < right and not s[right].isalnum():
+            right -= 1
+            
+        if s[left].lower() != s[right].lower():
+            return False
+            
+        left += 1
+        right -= 1
+        
+    return True''',
+        leetcode_problems=[
+            "125. Valid Palindrome - https://leetcode.com/problems/valid-palindrome/"
+        ],
+        examples=[
+            AlgorithmExample(
+                input_data='s = "A man, a plan, a canal: Panama"',
+                output_data="true",
+                explanation="Строка является палиндромом после удаления не-алфавитных символов"
+            )
+        ],
+        category="строки",
+        difficulty="easy"
+    ),
+
+    Algorithm(
+        title="Subarray Sum Equals K",
+        description="Поиск количества подмассивов с суммой равной K",
+        complexity="Временная сложность: O(n), Пространственная сложность: O(n)",
+        theory="""Задача: Найти количество подмассивов с суммой равной K.
+
+Подход к решению:
+1. Использовать префиксные суммы и HashMap
+2. Для каждой позиции проверять, есть ли префиксная сумма (текущая сумма - K)
+3. Поддерживать счетчик префиксных сумм
+4. Обновлять результат при нахождении подходящего префикса""",
+        visualization_url="https://leetcode.com/problems/subarray-sum-equals-k/",
+        java_code='''public class Solution {
+    public int subarraySum(int[] nums, int k) {
+        Map<Integer, Integer> map = new HashMap<>();
+        map.put(0, 1);
+        
+        int sum = 0;
+        int count = 0;
+        
+        for (int num : nums) {
+            sum += num;
+            if (map.containsKey(sum - k)) {
+                count += map.get(sum - k);
+            }
+            map.put(sum, map.getOrDefault(sum, 0) + 1);
+        }
+        
+        return count;
+    }
+}''',
+        python_code='''def subarray_sum(nums: List[int], k: int) -> int:
+    prefix_sum = {0: 1}
+    current_sum = count = 0
+    
+    for num in nums:
+        current_sum += num
+        if current_sum - k in prefix_sum:
+            count += prefix_sum[current_sum - k]
+        prefix_sum[current_sum] = prefix_sum.get(current_sum, 0) + 1
+        
+    return count''',
+        leetcode_problems=[
+            "560. Subarray Sum Equals K - https://leetcode.com/problems/subarray-sum-equals-k/"
+        ],
+        examples=[
+            AlgorithmExample(
+                input_data="nums = [1,1,1], k = 2",
+                output_data="2",
+                explanation="Есть два подмассива с суммой 2: [1,1] и [1,1]"
+            )
+        ],
+        category="массивы",
+        difficulty="medium"
+    ),
+
+    Algorithm(
+        title="Merge k Sorted Lists",
+        description="Объединение k отсортированных связных списков в один",
+        complexity="Временная сложность: O(n log k), Пространственная сложность: O(k)",
+        theory="""Задача: Объединить k отсортированных связных списков в один.
+
+Подход к решению:
+1. Использовать минимальную кучу (PriorityQueue)
+2. Добавить головы всех списков в кучу
+3. Извлекать минимальный элемент и добавлять следующий из того же списка
+4. Продолжать пока куча не пуста""",
+        visualization_url="https://leetcode.com/problems/merge-k-sorted-lists/",
+        java_code='''public class Solution {
+    public ListNode mergeKLists(ListNode[] lists) {
+        if (lists == null || lists.length == 0) return null;
+        
+        PriorityQueue<ListNode> pq = new PriorityQueue<>((a, b) -> a.val - b.val);
+        
+        for (ListNode node : lists) {
+            if (node != null) {
+                pq.offer(node);
+            }
+        }
+        
+        ListNode dummy = new ListNode(0);
+        ListNode current = dummy;
+        
+        while (!pq.isEmpty()) {
+            ListNode node = pq.poll();
+            current.next = node;
+            current = current.next;
+            
+            if (node.next != null) {
+                pq.offer(node.next);
+            }
+        }
+        
+        return dummy.next;
+    }
+}''',
+        python_code='''def merge_k_lists(lists: List[Optional[ListNode]]) -> Optional[ListNode]:
+    if not lists:
+        return None
+        
+    pq = []
+    for i, node in enumerate(lists):
+        if node:
+            heapq.heappush(pq, (node.val, i, node))
+            
+    dummy = ListNode(0)
+    current = dummy
+    
+    while pq:
+        val, i, node = heapq.heappop(pq)
+        current.next = node
+        current = current.next
+        
+        if node.next:
+            heapq.heappush(pq, (node.next.val, i, node.next))
+            
+    return dummy.next''',
+        leetcode_problems=[
+            "23. Merge k Sorted Lists - https://leetcode.com/problems/merge-k-sorted-lists/"
+        ],
+        examples=[
+            AlgorithmExample(
+                input_data="lists = [[1,4,5],[1,3,4],[2,6]]",
+                output_data="[1,1,2,3,4,4,5,6]",
+                explanation="Объединенный отсортированный список"
+            )
+        ],
+        category="связные списки",
+        difficulty="hard"
+    ),
+
+    Algorithm(
+        title="Trapping Rain Water",
+        description="Вычисление количества воды, которое может быть задержано между столбиками",
+        complexity="Временная сложность: O(n), Пространственная сложность: O(1)",
+        theory="""Задача: Вычислить, сколько воды может быть задержано между столбиками гистограммы.
+
+Подход к решению:
+1. Использовать два указателя: с начала и конца массива
+2. Поддерживать максимальные высоты слева и справа
+3. Для каждой позиции вычислять количество воды как min(leftMax, rightMax) - height[i]
+4. Обновлять максимумы при движении указателей""",
+        visualization_url="https://leetcode.com/problems/trapping-rain-water/",
+        java_code='''public class Solution {
+    public int trap(int[] height) {
+        int left = 0;
+        int right = height.length - 1;
+        int leftMax = 0;
+        int rightMax = 0;
+        int water = 0;
+        
+        while (left < right) {
+            if (height[left] < height[right]) {
+                leftMax = Math.max(leftMax, height[left]);
+                water += leftMax - height[left];
+                left++;
+            } else {
+                rightMax = Math.max(rightMax, height[right]);
+                water += rightMax - height[right];
+                right--;
+            }
+        }
+        
+        return water;
+    }
+}''',
+        python_code='''def trap(height: List[int]) -> int:
+    left, right = 0, len(height) - 1
+    left_max = right_max = water = 0
+    
+    while left < right:
+        if height[left] < height[right]:
+            left_max = max(left_max, height[left])
+            water += left_max - height[left]
+            left += 1
+        else:
+            right_max = max(right_max, height[right])
+            water += right_max - height[right]
+            right -= 1
+            
+    return water''',
+        leetcode_problems=[
+            "42. Trapping Rain Water - https://leetcode.com/problems/trapping-rain-water/"
+        ],
+        examples=[
+            AlgorithmExample(
+                input_data="height = [0,1,0,2,1,0,1,3,2,1,2,1]",
+                output_data="6",
+                explanation="Можно задержать 6 единиц воды"
+            )
+        ],
+        category="массивы",
+        difficulty="hard"
+    ),
+
+    Algorithm(
+        title="Two Sum",
+        description="Поиск двух чисел в массиве, сумма которых равна заданному значению",
+        complexity="Временная сложность: O(n), Пространственная сложность: O(n)",
+        theory="""Задача: Найти два числа в массиве, сумма которых равна заданному значению.
+
+Подход к решению:
+1. Использовать HashMap для хранения чисел и их индексов
+2. Для каждого числа проверять, есть ли в HashMap число (target - текущее число)
+3. Если есть - возвращать индексы обоих чисел
+4. Если нет - добавлять текущее число в HashMap""",
+        visualization_url="https://leetcode.com/problems/two-sum/",
+        java_code='''public class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        Map<Integer, Integer> map = new HashMap<>();
+        
+        for (int i = 0; i < nums.length; i++) {
+            int complement = target - nums[i];
+            if (map.containsKey(complement)) {
+                return new int[] { map.get(complement), i };
+            }
+            map.put(nums[i], i);
+        }
+        
+        return new int[] {};
+    }
+}''',
+        python_code='''def two_sum(nums: List[int], target: int) -> List[int]:
+    num_map = {}
+    
+    for i, num in enumerate(nums):
+        complement = target - num
+        if complement in num_map:
+            return [num_map[complement], i]
+        num_map[num] = i
+        
+    return []''',
+        leetcode_problems=[
+            "1. Two Sum - https://leetcode.com/problems/two-sum/"
+        ],
+        examples=[
+            AlgorithmExample(
+                input_data="nums = [2,7,11,15], target = 9",
+                output_data="[0,1]",
+                explanation="nums[0] + nums[1] = 2 + 7 = 9"
+            )
+        ],
+        category="массивы",
+        difficulty="easy"
+    ),
+
+    Algorithm(
+        title="Number of Islands",
+        description="Подсчет количества островов в матрице",
+        complexity="Временная сложность: O(m*n), Пространственная сложность: O(m*n)",
+        theory="""Задача: Посчитать количество островов в матрице, где '1' — это земля, а '0' — вода.
+
+Подход к решению:
+1. Использовать поиск в глубину (DFS) или ширину (BFS)
+2. Помечать посещенные клетки
+3. Для каждой непосещенной клетки с '1':
+   - Увеличивать счетчик островов
+   - Помечать все связанные клетки как посещенные
+4. Возвращать количество островов""",
+        visualization_url="https://leetcode.com/problems/number-of-islands/",
+        java_code='''public class Solution {
+    public int numIslands(char[][] grid) {
+        if (grid == null || grid.length == 0) return 0;
+        
+        int count = 0;
+        for (int i = 0; i < grid.length; i++) {
+            for (int j = 0; j < grid[0].length; j++) {
+                if (grid[i][j] == '1') {
+                    count++;
+                    dfs(grid, i, j);
+                }
+            }
+        }
+        return count;
+    }
+    
+    private void dfs(char[][] grid, int i, int j) {
+        if (i < 0 || i >= grid.length || j < 0 || j >= grid[0].length || grid[i][j] == '0') {
+            return;
+        }
+        
+        grid[i][j] = '0';
+        dfs(grid, i + 1, j);
+        dfs(grid, i - 1, j);
+        dfs(grid, i, j + 1);
+        dfs(grid, i, j - 1);
+    }
+}''',
+        python_code='''def num_islands(grid: List[List[str]]) -> int:
+    if not grid:
+        return 0
+        
+    def dfs(i: int, j: int):
+        if i < 0 or i >= len(grid) or j < 0 or j >= len(grid[0]) or grid[i][j] == '0':
+            return
+            
+        grid[i][j] = '0'
+        dfs(i + 1, j)
+        dfs(i - 1, j)
+        dfs(i, j + 1)
+        dfs(i, j - 1)
+        
+    count = 0
+    for i in range(len(grid)):
+        for j in range(len(grid[0])):
+            if grid[i][j] == '1':
+                count += 1
+                dfs(i, j)
+                
+    return count''',
+        leetcode_problems=[
+            "200. Number of Islands - https://leetcode.com/problems/number-of-islands/"
+        ],
+        examples=[
+            AlgorithmExample(
+                input_data='''grid = [
+  ["1","1","0","0","0"],
+  ["1","1","0","0","0"],
+  ["0","0","1","0","0"],
+  ["0","0","0","1","1"]
+]''',
+                output_data="3",
+                explanation="В матрице есть 3 острова"
+            )
+        ],
+        category="графы",
+        difficulty="medium"
+    ),
+
+    Algorithm(
+        title="Longest Palindromic Substring",
+        description="Поиск самой длинной подстроки-палиндрома",
+        complexity="Временная сложность: O(n²), Пространственная сложность: O(1)",
+        theory="""Задача: Найти самую длинную подстроку-палиндром в строке.
+
+Подход к решению:
+1. Использовать метод расширения от центра
+2. Для каждого символа и пары символов:
+   - Расширять влево и вправо, пока символы совпадают
+   - Обновлять максимальную длину и начальную позицию
+3. Возвращать подстроку с максимальной длиной""",
+        visualization_url="https://leetcode.com/problems/longest-palindromic-substring/",
+        java_code='''public class Solution {
+    public String longestPalindrome(String s) {
+        if (s == null || s.length() < 1) return "";
+        
+        int start = 0;
+        int maxLength = 0;
+        
+        for (int i = 0; i < s.length(); i++) {
+            int len1 = expandAroundCenter(s, i, i);
+            int len2 = expandAroundCenter(s, i, i + 1);
+            int len = Math.max(len1, len2);
+            
+            if (len > maxLength) {
+                start = i - (len - 1) / 2;
+                maxLength = len;
+            }
+        }
+        
+        return s.substring(start, start + maxLength);
+    }
+    
+    private int expandAroundCenter(String s, int left, int right) {
+        while (left >= 0 && right < s.length() && s.charAt(left) == s.charAt(right)) {
+            left--;
+            right++;
+        }
+        return right - left - 1;
+    }
+}''',
+        python_code='''def longest_palindrome(s: str) -> str:
+    if not s:
+        return ""
+        
+    def expand_around_center(left: int, right: int) -> int:
+        while left >= 0 and right < len(s) and s[left] == s[right]:
+            left -= 1
+            right += 1
+        return right - left - 1
+        
+    start = max_length = 0
+    
+    for i in range(len(s)):
+        len1 = expand_around_center(i, i)
+        len2 = expand_around_center(i, i + 1)
+        length = max(len1, len2)
+        
+        if length > max_length:
+            start = i - (length - 1) // 2
+            max_length = length
+            
+    return s[start:start + max_length]''',
+        leetcode_problems=[
+            "5. Longest Palindromic Substring - https://leetcode.com/problems/longest-palindromic-substring/"
+        ],
+        examples=[
+            AlgorithmExample(
+                input_data='s = "babad"',
+                output_data='"bab" или "aba"',
+                explanation="Обе подстроки являются палиндромами максимальной длины"
+            )
+        ],
+        category="строки",
+        difficulty="medium"
     )
 ]) 

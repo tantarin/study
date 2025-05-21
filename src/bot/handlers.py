@@ -136,8 +136,7 @@ def start(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("Docker & Kubernetes", callback_data='docker_k8s')],
         [InlineKeyboardButton("Алгоритмы", callback_data='algorithms')],
         [InlineKeyboardButton("🏗 System Design", callback_data='system_design')],
-        [InlineKeyboardButton("📝 Скачать всю теорию", callback_data='md_full')],
-        [InlineKeyboardButton("🔄 Старт", callback_data='restart')]
+        [InlineKeyboardButton("📝 Скачать всю теорию", callback_data='md_full')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -298,8 +297,17 @@ def show_algorithms_menu(update: Update, context: CallbackContext) -> None:
 
 def escape_markdown(text: str) -> str:
     """Экранирует специальные символы Markdown"""
+    # Список всех специальных символов Markdown
     escape_chars = r'_*[]()~`>#+-=|{}.!'
-    return ''.join(f'\\{c}' if c in escape_chars else c for c in text)
+    
+    # Сначала экранируем обратный слеш
+    text = text.replace('\\', '\\\\')
+    
+    # Затем экранируем все остальные специальные символы
+    for char in escape_chars:
+        text = text.replace(char, f'\\{char}')
+    
+    return text
 
 def create_theory_markdown(algorithms, category: str) -> str:
     """Создает Markdown файл с теорией по категории алгоритмов"""
@@ -494,7 +502,7 @@ def show_system_design_menu(update: Update, context: CallbackContext) -> None:
     )
 
 def process_code_blocks(text: str, language: str = None) -> str:
-    """Обрабатывает блоки кода в тексте и добавляет подсветку синтаксиса"""
+    """Обрабатывает блоки кода в тексте"""
     if not text:
         return ""
         
@@ -510,7 +518,8 @@ def process_code_blocks(text: str, language: str = None) -> str:
     
     for i, part in enumerate(parts):
         if i % 2 == 0:  # Обычный текст
-            result.append(html.escape(part))
+            # Экранируем специальные символы Markdown
+            result.append(escape_markdown(part))
         else:  # Блок кода
             # Определяем язык и код
             if '\n' in part:
@@ -518,29 +527,19 @@ def process_code_blocks(text: str, language: str = None) -> str:
             else:
                 lang, code = language or 'text', part
                 
-            # Подсвечиваем код
-            try:
-                lexer = get_lexer_by_name(lang)
-                formatter = HtmlFormatter(style='monokai')
-                highlighted_code = highlight(code.strip(), lexer, formatter)
-                
-                # Удаляем div и span теги, оставляем только pre и code
-                highlighted_code = re.sub(r'<div[^>]*>|</div>', '', highlighted_code)
-                highlighted_code = re.sub(r'<span[^>]*>|</span>', '', highlighted_code)
-                
-                # Добавляем класс языка для стилизации
-                result.append(f'<pre><code class="language-{lang}">{highlighted_code}</code></pre>')
-            except:
-                result.append(f'<pre><code>{html.escape(code.strip())}</code></pre>')
+            # Добавляем код в Markdown формате
+            code_lines = code.strip().split('\n')
+            formatted_code = '\n'.join(code_lines)
+            result.append(f'\n```{lang}\n{formatted_code}\n```\n')
     
     return ''.join(result)
 
 def show_system_design_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
     """Показать тему по System Design"""
     card = SYSTEM_DESIGN_CARDS[topic_index]
-    message = f"<b>{html.escape(card.text)}</b>\n\n"
+    message = f"*{escape_markdown(card.text)}*\n\n"
     message += process_code_blocks(card.theory)
-    message += "\n\n<b>Практические примеры:</b>\n"
+    message += "\n\n*Практические примеры:*\n"
     message += process_code_blocks(card.explanation)
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='system_design')]]
@@ -554,19 +553,19 @@ def show_system_design_topic(update: Update, context: CallbackContext, topic_ind
                 update.callback_query.edit_message_text(
                     text=part,
                     reply_markup=reply_markup if i == len(parts)-1 else None,
-                    parse_mode=ParseMode.HTML
+                    parse_mode=ParseMode.MARKDOWN
                 )
             else:
                 update.callback_query.message.reply_text(
                     text=part,
                     reply_markup=reply_markup if i == len(parts)-1 else None,
-                    parse_mode=ParseMode.HTML
+                    parse_mode=ParseMode.MARKDOWN
                 )
     else:
         update.callback_query.edit_message_text(
             text=message,
             reply_markup=reply_markup,
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.MARKDOWN
         )
 
 def button_handler(update: Update, context: CallbackContext) -> None:
@@ -692,9 +691,9 @@ def button_handler(update: Update, context: CallbackContext) -> None:
 def show_java_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
     """Показать тему по Java Core"""
     card = JAVA_CORE_CARDS[int(topic_index)]
-    message = f"<b>{html.escape(card.text)}</b>\n\n"
+    message = f"*{escape_markdown(card.text)}*\n\n"
     message += process_code_blocks(card.theory, 'java')
-    message += "\n\n<b>Практические примеры:</b>\n"
+    message += "\n\n*Практические примеры:*\n"
     message += process_code_blocks(card.explanation, 'java')
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='java_core')]]
@@ -708,27 +707,27 @@ def show_java_topic(update: Update, context: CallbackContext, topic_index: int) 
                 update.callback_query.edit_message_text(
                     text=part,
                     reply_markup=reply_markup if i == len(parts)-1 else None,
-                    parse_mode=ParseMode.HTML
+                    parse_mode=ParseMode.MARKDOWN
                 )
             else:
                 update.callback_query.message.reply_text(
                     text=part,
                     reply_markup=reply_markup if i == len(parts)-1 else None,
-                    parse_mode=ParseMode.HTML
+                    parse_mode=ParseMode.MARKDOWN
                 )
     else:
         update.callback_query.edit_message_text(
             text=message,
             reply_markup=reply_markup,
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.MARKDOWN
         )
 
 def show_spring_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
     """Показать тему по Spring"""
     card = SPRING_CARDS[int(topic_index)]
-    message = f"<b>{html.escape(card.text)}</b>\n\n"
+    message = f"*{escape_markdown(card.text)}*\n\n"
     message += process_code_blocks(card.theory, 'java')
-    message += "\n\n<b>Практические примеры:</b>\n"
+    message += "\n\n*Практические примеры:*\n"
     message += process_code_blocks(card.explanation, 'java')
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='spring')]]
@@ -737,15 +736,15 @@ def show_spring_topic(update: Update, context: CallbackContext, topic_index: int
     update.callback_query.edit_message_text(
         text=message,
         reply_markup=reply_markup,
-        parse_mode=ParseMode.HTML
+        parse_mode=ParseMode.MARKDOWN_V2
     )
 
 def show_database_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
     """Показать тему по базам данных"""
     card = DATABASE_CARDS[int(topic_index)]
-    message = f"<b>{html.escape(card.text)}</b>\n\n"
+    message = f"*{escape_markdown(card.text)}*\n\n"
     message += process_code_blocks(card.theory, 'sql')
-    message += "\n\n<b>Практические примеры:</b>\n"
+    message += "\n\n*Практические примеры:*\n"
     message += process_code_blocks(card.explanation, 'sql')
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='database')]]
@@ -754,15 +753,15 @@ def show_database_topic(update: Update, context: CallbackContext, topic_index: i
     update.callback_query.edit_message_text(
         text=message,
         reply_markup=reply_markup,
-        parse_mode=ParseMode.HTML
+        parse_mode=ParseMode.MARKDOWN_V2
     )
 
 def show_docker_k8s_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
     """Показать тему по Docker и Kubernetes"""
     card = DOCKER_K8S_CARDS[int(topic_index)]
-    message = f"<b>{html.escape(card.text)}</b>\n\n"
+    message = f"*{escape_markdown(card.text)}*\n\n"
     message += process_code_blocks(card.theory, 'yaml')
-    message += "\n\n<b>Практические примеры:</b>\n"
+    message += "\n\n*Практические примеры:*\n"
     message += process_code_blocks(card.explanation, 'yaml')
     
     keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='docker_k8s')]]
@@ -771,7 +770,7 @@ def show_docker_k8s_topic(update: Update, context: CallbackContext, topic_index:
     update.callback_query.edit_message_text(
         text=message,
         reply_markup=reply_markup,
-        parse_mode=ParseMode.HTML
+        parse_mode=ParseMode.MARKDOWN_V2
     )
 
 def main():
