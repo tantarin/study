@@ -6,6 +6,7 @@ from pygments import highlight
 from pygments.lexers import get_lexer_by_name
 from pygments.formatters import HtmlFormatter
 import re
+import html
 
 def highlight_code(code, language):
     """Подсвечивает синтаксис кода с использованием Pygments"""
@@ -28,7 +29,7 @@ def convert_md_to_html(md_file_path):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Теория для подготовки к собеседованию</title>
+        <title>Теория для подготовки к собеседованиям</title>
         <style>
             body {{
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -55,12 +56,189 @@ def convert_md_to_html(md_file_path):
             }}
             code {{
                 font-family: 'Fira Code', 'Consolas', monospace;
+                color: #f8f8f2;
             }}
             .highlight {{
                 margin: 1rem 0;
             }}
             .highlight pre {{
                 margin: 0;
+                background-color: #272822;
+            }}
+            .highlight .c {{
+                color: #75715e;
+            }}
+            .highlight .err {{
+                color: #960050;
+                background-color: #1e0010;
+            }}
+            .highlight .k {{
+                color: #66d9ef;
+            }}
+            .highlight .l {{
+                color: #ae81ff;
+            }}
+            .highlight .n {{
+                color: #f8f8f2;
+            }}
+            .highlight .o {{
+                color: #f92672;
+            }}
+            .highlight .p {{
+                color: #f8f8f2;
+            }}
+            .highlight .cm {{
+                color: #75715e;
+            }}
+            .highlight .cp {{
+                color: #75715e;
+            }}
+            .highlight .c1 {{
+                color: #75715e;
+            }}
+            .highlight .cs {{
+                color: #75715e;
+            }}
+            .highlight .ge {{
+                font-style: italic;
+            }}
+            .highlight .gs {{
+                font-weight: bold;
+            }}
+            .highlight .kc {{
+                color: #66d9ef;
+            }}
+            .highlight .kd {{
+                color: #66d9ef;
+            }}
+            .highlight .kn {{
+                color: #f92672;
+            }}
+            .highlight .kp {{
+                color: #66d9ef;
+            }}
+            .highlight .kr {{
+                color: #66d9ef;
+            }}
+            .highlight .kt {{
+                color: #66d9ef;
+            }}
+            .highlight .ld {{
+                color: #e6db74;
+            }}
+            .highlight .m {{
+                color: #ae81ff;
+            }}
+            .highlight .s {{
+                color: #e6db74;
+            }}
+            .highlight .na {{
+                color: #a6e22e;
+            }}
+            .highlight .nb {{
+                color: #f8f8f2;
+            }}
+            .highlight .nc {{
+                color: #a6e22e;
+            }}
+            .highlight .no {{
+                color: #66d9ef;
+            }}
+            .highlight .nd {{
+                color: #a6e22e;
+            }}
+            .highlight .ni {{
+                color: #f8f8f2;
+            }}
+            .highlight .ne {{
+                color: #a6e22e;
+            }}
+            .highlight .nf {{
+                color: #a6e22e;
+            }}
+            .highlight .nl {{
+                color: #f8f8f2;
+            }}
+            .highlight .nn {{
+                color: #f8f8f2;
+            }}
+            .highlight .nx {{
+                color: #a6e22e;
+            }}
+            .highlight .py {{
+                color: #f8f8f2;
+            }}
+            .highlight .nt {{
+                color: #f92672;
+            }}
+            .highlight .nv {{
+                color: #f8f8f2;
+            }}
+            .highlight .ow {{
+                color: #f92672;
+            }}
+            .highlight .w {{
+                color: #f8f8f2;
+            }}
+            .highlight .mf {{
+                color: #ae81ff;
+            }}
+            .highlight .mh {{
+                color: #ae81ff;
+            }}
+            .highlight .mi {{
+                color: #ae81ff;
+            }}
+            .highlight .mo {{
+                color: #ae81ff;
+            }}
+            .highlight .sb {{
+                color: #e6db74;
+            }}
+            .highlight .sc {{
+                color: #e6db74;
+            }}
+            .highlight .sd {{
+                color: #e6db74;
+            }}
+            .highlight .s2 {{
+                color: #e6db74;
+            }}
+            .highlight .se {{
+                color: #ae81ff;
+            }}
+            .highlight .sh {{
+                color: #e6db74;
+            }}
+            .highlight .si {{
+                color: #e6db74;
+            }}
+            .highlight .sx {{
+                color: #e6db74;
+            }}
+            .highlight .sr {{
+                color: #e6db74;
+            }}
+            .highlight .s1 {{
+                color: #e6db74;
+            }}
+            .highlight .ss {{
+                color: #e6db74;
+            }}
+            .highlight .bp {{
+                color: #f8f8f2;
+            }}
+            .highlight .vc {{
+                color: #f8f8f2;
+            }}
+            .highlight .vg {{
+                color: #f8f8f2;
+            }}
+            .highlight .vi {{
+                color: #f8f8f2;
+            }}
+            .highlight .il {{
+                color: #ae81ff;
             }}
             blockquote {{
                 border-left: 4px solid #3498db;
@@ -93,8 +271,13 @@ def convert_md_to_html(md_file_path):
     def replace_code_block(match):
         language = match.group(1)
         code = match.group(2)
-        highlighted_code = highlight_code(code, language)
-        return highlighted_code
+        try:
+            lexer = get_lexer_by_name(language)
+            formatter = HtmlFormatter(style='monokai')
+            highlighted_code = highlight(code.strip(), lexer, formatter)
+            return f'<div class="highlight">{highlighted_code}</div>'
+        except:
+            return f'<pre><code>{html.escape(code.strip())}</code></pre>'
     
     html_content = re.sub(code_block_pattern, replace_code_block, html_content, flags=re.DOTALL)
     
