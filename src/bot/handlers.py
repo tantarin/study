@@ -13,6 +13,8 @@ from src.cards import (
     DOCKER_K8S_CARDS,
     ALGORITHMS
 )
+from src.cards.algorithms import ALGORITHMS
+from src.cards.system_design import SYSTEM_DESIGN_CARDS
 import tempfile
 
 # Настройка логирования
@@ -26,8 +28,16 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 
-# Словарь для хранения состояния пользователей
-user_states = {}
+CATEGORIES = {
+    "algorithms": {
+        "name": "🔄 Алгоритмы",
+        "cards": ALGORITHMS
+    },
+    "system_design": {
+        "name": "🏗 System Design",
+        "cards": SYSTEM_DESIGN_CARDS
+    }
+}
 
 def error_handler(update: Update, context: CallbackContext):
     """Обработчик ошибок"""
@@ -122,8 +132,8 @@ def start(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("Базы данных", callback_data='database')],
         [InlineKeyboardButton("Docker & Kubernetes", callback_data='docker_k8s')],
         [InlineKeyboardButton("Алгоритмы", callback_data='algorithms')],
+        [InlineKeyboardButton("🏗 System Design", callback_data='system_design')],
         [InlineKeyboardButton("📝 Скачать всю теорию", callback_data='md_full')],
-        [InlineKeyboardButton("Статистика", callback_data='stats')],
         [InlineKeyboardButton("🔄 Старт", callback_data='restart')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -464,6 +474,55 @@ def show_theory(update: Update, context: CallbackContext, card: Question) -> Non
         parse_mode=ParseMode.MARKDOWN
     )
 
+def show_system_design_menu(update: Update, context: CallbackContext) -> None:
+    """Показать меню тем System Design"""
+    keyboard = []
+    for i, card in enumerate(SYSTEM_DESIGN_CARDS):
+        keyboard.append([InlineKeyboardButton(
+            card.text,
+            callback_data=f'system_design_topic_{i}'
+        )])
+    keyboard.append([InlineKeyboardButton("Назад", callback_data='back')])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.edit_message_text(
+        text="Выберите тему по System Design:",
+        reply_markup=reply_markup
+    )
+
+def show_system_design_topic(update: Update, context: CallbackContext, topic_index: int) -> None:
+    """Показать тему по System Design"""
+    card = SYSTEM_DESIGN_CARDS[topic_index]
+    message = f"<b>{html.escape(card.text)}</b>\n\n"
+    message += f"{html.escape(card.theory)}\n\n"
+    message += f"<b>Практические примеры:</b>\n{html.escape(card.explanation)}"
+    
+    keyboard = [[InlineKeyboardButton("Назад к темам", callback_data='system_design')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    # Разбиваем сообщение на части, если оно слишком длинное
+    if len(message) > 4096:
+        parts = [message[i:i+4096] for i in range(0, len(message), 4096)]
+        for i, part in enumerate(parts):
+            if i == 0:
+                update.callback_query.edit_message_text(
+                    text=part,
+                    reply_markup=reply_markup if i == len(parts)-1 else None,
+                    parse_mode=ParseMode.HTML
+                )
+            else:
+                update.callback_query.message.reply_text(
+                    text=part,
+                    reply_markup=reply_markup if i == len(parts)-1 else None,
+                    parse_mode=ParseMode.HTML
+                )
+    else:
+        update.callback_query.edit_message_text(
+            text=message,
+            reply_markup=reply_markup,
+            parse_mode=ParseMode.HTML
+        )
+
 def button_handler(update: Update, context: CallbackContext) -> None:
     """Обработчик нажатий на кнопки"""
     query = update.callback_query
@@ -479,6 +538,11 @@ def button_handler(update: Update, context: CallbackContext) -> None:
         show_docker_k8s_menu(update, context)
     elif data == "algorithms":
         show_algorithms_menu(update, context)
+    elif data == "system_design":
+        show_system_design_menu(update, context)
+    elif data.startswith("system_design_topic_"):
+        topic_index = int(data.split("_")[-1])
+        show_system_design_topic(update, context, topic_index)
     elif data.startswith("cat_"):
         category = data[4:]
         show_algorithm_category(update, context, category)
@@ -550,6 +614,8 @@ def button_handler(update: Update, context: CallbackContext) -> None:
             show_docker_k8s_menu(update, context)
         elif current_section == 'algorithms':
             show_algorithms_menu(update, context)
+        elif current_section == 'system_design':
+            show_system_design_menu(update, context)
     elif data == "back_to_card":
         # Возвращаемся к текущей карточке
         current_card = context.user_data.get('current_card')
@@ -729,37 +795,6 @@ def show_docker_k8s_topic(update: Update, context: CallbackContext, topic_index:
         text=message,
         reply_markup=reply_markup,
         parse_mode=ParseMode.HTML
-    )
-
-def show_stats(update: Update, context: CallbackContext) -> None:
-    """Показать статистику изучения"""
-    user_id = update.callback_query.from_user.id
-    if user_id not in user_states:
-        user_states[user_id] = {
-            'java_core': set(),
-            'spring': set(),
-            'database': set(),
-            'docker_k8s': set()
-        }
-    
-    java_core_learned = len(user_states[user_id]['java_core'])
-    spring_learned = len(user_states[user_id]['spring'])
-    database_learned = len(user_states[user_id]['database'])
-    docker_k8s_learned = len(user_states[user_id]['docker_k8s'])
-    
-    message = f"*Ваша статистика:*\n\n"
-    message += f"Java Core: {java_core_learned}/{len(JAVA_CORE_CARDS)} тем\n"
-    message += f"Spring: {spring_learned}/{len(SPRING_CARDS)} тем\n"
-    message += f"Базы данных: {database_learned}/{len(DATABASE_CARDS)} тем\n"
-    message += f"Docker & Kubernetes: {docker_k8s_learned}/{len(DOCKER_K8S_CARDS)} тем"
-    
-    keyboard = [[InlineKeyboardButton("Назад", callback_data='back')]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    update.callback_query.edit_message_text(
-        text=message,
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
     )
 
 def main():
